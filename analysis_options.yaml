@@ -1,0 +1,70 @@
+# This file configures the analyzer, which statically analyzes Dart code to
+# check for errors, warnings, and lints.
+#
+# The issues identified by the analyzer are surfaced in the UI of Dart-enabled
+# IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
+# invoked from the command line by running `flutter analyze`.
+
+# The following line activates a set of recommended lints for Flutter apps,
+# packages, and plugins designed to encourage good coding practices.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - windows/**
+    - macos/**
+    - linux/**
+
+linter:
+  # The lint rules applied to this project can be customized in the
+  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
+  # included above or to enable additional rules. A list of all available lints
+  # and their documentation is published at https://dart.dev/lints.
+  #
+  # Instead of disabling a lint rule for the entire project in the
+  # section below, it can also be suppressed for a single line of code
+  # or a specific dart file by using the `// ignore: name_of_lint` and
+  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
+  # producing the lint.
+  rules:
+    # Use double quotes for string literals.
+    prefer_double_quotes: true
+
+    # Require trailing commas for cleaner diffs and better formatter output.
+    require_trailing_commas: true
+
+    # Prefer const constructors and literals where possible.
+    prefer_const_constructors: true
+    prefer_const_literals_to_create_immutables: true
+    prefer_const_declarations: true
+
+    # Prefer final for variables, parameters, and for-each variables
+    # that are not reassigned.
+    prefer_final_locals: true
+    prefer_final_in_for_each: true
+
+    # Avoid print statements in production code; use a logger instead.
+    avoid_print: true
+
+    # Remove redundant values and unnecessary `this`.
+    avoid_redundant_argument_values: true
+    unnecessary_this: true
+
+    # Use super-parameters when possible.
+    use_super_parameters: true
+
+    # Widget best practices.
+    use_key_in_widget_constructors: true
+    avoid_unnecessary_containers: true
+    sized_box_for_whitespace: true
+
+    # Always put required named parameters first.
+    always_put_required_named_parameters_first: true
+
+formatter:
+  # Line width used by the Dart formatter.
+  page_width: 100
+
+# Additional information about this file can be found at
+# https://dart.dev/guides/language/analysis-options

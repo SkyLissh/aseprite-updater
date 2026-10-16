@@ -1,0 +1,21 @@
+{
+	"@@locale": "en",
+	"app_title": "Aseprite Updater",
+	"aseprite": "Aseprite",
+	"changelog": "Changelog",
+	"update": "Update",
+	"released_on": "Released {date}",
+	"@released_on": {
+		"description": "Release publication date shown in the release dialog",
+		"placeholders": {
+			"date": {
+				"type": "DateTime",
+				"format": "yMMMMd"
+			}
+		}
+	},
+	"pre_release": "Pre-release",
+	"something_went_wrong": "Something went wrong",
+	"retry": "Retry",
+	"close": "Close"
+}
