@@ -46,6 +46,28 @@ Close every change with a clear account:
 - ❌ what was NOT done (explicitly, even if obvious)
 - ⏳ what needs extra input, data, or decisions from the user before continuation
 
+## Commit guidelines
+
+- **Format:** follow gitmoji-cli's emoji-first format: `<emoji> <description>` or
+  `<emoji> (<scope>): <description>`. Use one Unicode emoji, an optional feature/component
+  scope, and a concise, imperative description. Do not prepend Conventional Commit types
+  such as `feat:` or `fix:`.
+- **Emoji selection:** use the meanings from the [official Gitmoji guide](https://gitmoji.dev/),
+  which gitmoji-cli uses for its emoji picker. Consult `gitmoji --list` or
+  `gitmoji --search <keyword>` when choosing an emoji; do not invent project-specific meanings.
+  Common choices: ✨ new features, 🐛 bug fixes, 📝 documentation, ♻️ refactoring,
+  🎨 code structure/formatting, 💄 UI/style, ✅ tests, 🔧 configuration, 🌐 localization,
+  and 🚚 file/resource moves or renames. Choose the emoji matching the commit's main purpose.
+- **Examples:** `✨ add incremental builds`, `🐛 (release): handle missing assets`,
+  `🚚 rename releases feature folder`, `📝 document commit guidelines`.
+- **Manual workflow:** `gitmoji -c` prompts for the emoji, optional scope (when enabled),
+  title, and optional body (when enabled). Agents must use the same message format even
+  when committing with Git directly. See the [CLI documentation](https://github.com/carloscuesta/gitmoji-cli#commit)
+  and [Gitmoji specification](https://gitmoji.dev/specification).
+- **Authorization:** these guidelines do not authorize staging or committing changes;
+  create commits only when explicitly requested. Leave existing commit history unchanged
+  unless a rewrite is explicitly requested.
+
 ## Code guidelines
 
 - **Feature-based architecture** (`core/`, `l10n/`, `features/<feature>/{models,services,
@@ -85,8 +107,7 @@ compiles Aseprite from source on the user's machine and keeps it updated. We nev
 binaries (Aseprite license); no Docker / cross-compilation. Skia comes precompiled per platform.
 Updates rebuild incrementally from a git clone, not fresh source archives.
 
-Phases (details in the Obsidian vault `Documents/Obsidian/Aseprite Updater/` — kanban + phase
-files + architecture notes):
+Phases:
 
 1. Build pipeline works on Linux (dev machine), deps assumed present.
 2. Update flow: tag detection → incremental rebuild → swap-on-success.
