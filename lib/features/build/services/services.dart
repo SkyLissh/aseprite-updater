@@ -1,1 +1,1 @@
-export "build_paths.dart";
+export "paths_service.dart";

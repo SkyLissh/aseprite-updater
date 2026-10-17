@@ -1,9 +1,9 @@
 import "dart:io";
 
-class BuildPaths {
+class PathsService {
   final Directory root;
 
-  BuildPaths(this.root);
+  PathsService(this.root);
 
   Directory get src => Directory("${root.path}/src");
   Directory get checkout => Directory("${src.path}/aseprite");
@@ -19,7 +19,7 @@ class BuildPaths {
     final xdgHome = Platform.environment["XDG_DATA_HOME"];
 
     if (xdgHome != null && xdgHome.startsWith("/")) {
-      return BuildPaths(Directory("$xdgHome/aseprite-updater"));
+      return PathsService(Directory("$xdgHome/aseprite-updater"));
     }
 
     final home = Platform.environment["HOME"];
@@ -27,7 +27,7 @@ class BuildPaths {
       throw StateError("HOME environment variable is not set");
     }
 
-    return BuildPaths(Directory("$home/.local/share/aseprite-updater"));
+    return PathsService(Directory("$home/.local/share/aseprite-updater"));
   }
 
   Future<void> ensureDirectoriesExist() async {
