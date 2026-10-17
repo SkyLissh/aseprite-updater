@@ -1,5 +1,5 @@
-import "package:aseprite_updater/features/releases/models/release.dart";
-import "package:aseprite_updater/features/releases/providers/providers.dart";
+import "package:aseprite_updater/features/release/models/release.dart";
+import "package:aseprite_updater/features/release/providers/providers.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "release.g.dart";

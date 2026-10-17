@@ -8,7 +8,7 @@ import "package:hooks_riverpod/hooks_riverpod.dart";
 import "package:aseprite_updater/l10n/app_localizations.dart";
 import "package:aseprite_updater/core/extensions/extensions.dart";
 import "package:aseprite_updater/core/theme/theme.dart";
-import "package:aseprite_updater/features/releases/widgets/widgets.dart";
+import "package:aseprite_updater/features/release/widgets/widgets.dart";
 import "package:aseprite_updater/features/window/window.dart";
 
 void main() async {

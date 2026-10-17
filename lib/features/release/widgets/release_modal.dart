@@ -5,7 +5,7 @@ import "package:url_launcher/url_launcher.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:hooks_riverpod/hooks_riverpod.dart";
 
-import "package:aseprite_updater/features/releases/providers/providers.dart";
+import "package:aseprite_updater/features/release/providers/providers.dart";
 import "package:aseprite_updater/core/extensions/extensions.dart";
 import "package:aseprite_updater/core/theme/theme.dart";
 

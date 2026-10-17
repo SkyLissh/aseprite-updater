@@ -1,4 +1,4 @@
-import "package:aseprite_updater/features/releases/models/release.dart";
+import "package:aseprite_updater/features/release/models/release.dart";
 import "package:dio/dio.dart";
 
 class RepoService {

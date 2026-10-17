@@ -1,6 +1,6 @@
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
-import "package:aseprite_updater/features/releases/services/services.dart";
+import "package:aseprite_updater/features/release/services/services.dart";
 
 part "repo.g.dart";
 
