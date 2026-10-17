@@ -1,10 +1,1 @@
-enum BuildPhase {
-  preparing,
-  checkingRelease,
-  cloning,
-  checkingOut,
-  downloadingSkia,
-  configuring,
-  compiling,
-  deploying,
-}
+enum BuildPhase { preparing, cloning, downloadingSkia, configuring, compiling, deploying }
