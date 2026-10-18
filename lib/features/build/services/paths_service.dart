@@ -3,7 +3,7 @@ import "dart:io";
 class PathsService {
   final Directory root;
 
-  PathsService(this.root);
+  new(this.root);
 
   Directory get src => Directory("${root.path}/src");
   Directory get checkout => Directory("${src.path}/aseprite");

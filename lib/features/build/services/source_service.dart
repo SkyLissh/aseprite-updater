@@ -5,7 +5,7 @@ import "dart:io";
 class SourceService {
   final Directory checkout;
 
-  SourceService(this.checkout);
+  new(this.checkout);
 
   /// Clones the selected tag and its submodules into a new [checkout].
   ///

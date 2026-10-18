@@ -1,21 +1,21 @@
 import "build_phase.dart";
 
 sealed class BuildEvent {
-  const BuildEvent();
+  const new();
 }
 
 class PhaseChanged extends BuildEvent {
   final BuildPhase phase;
 
-  const PhaseChanged(this.phase);
+  const new(this.phase);
 }
 
 class BuildOutput extends BuildEvent {
   final String output;
 
-  const BuildOutput(this.output);
+  const new(this.output);
 }
 
 class BuildCompleted extends BuildEvent {
-  const BuildCompleted();
+  const new();
 }

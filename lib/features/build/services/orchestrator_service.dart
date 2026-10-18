@@ -7,7 +7,7 @@ class OrchestratorService {
   final PathsService paths;
   final SourceService source;
 
-  OrchestratorService(this.paths, this.source);
+  new(this.paths, this.source);
 
   Stream<BuildEvent> run({required String tag}) async* {
     yield const PhaseChanged(.preparing);
