@@ -11,9 +11,9 @@ class PhaseChanged extends BuildEvent {
 }
 
 class BuildOutput extends BuildEvent {
-  final String output;
+  final String line;
 
-  const new(this.output);
+  const new(this.line);
 }
 
 class BuildCompleted extends BuildEvent {
