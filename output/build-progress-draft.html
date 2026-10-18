@@ -1,0 +1,47 @@
+<div id="aseprite-build-draft" class="viz-dotted-background">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    #aseprite-build-draft { padding: 32px 16px; }
+    #aseprite-build-draft .build-window { --build-bg: light-dark(#f6f4fc,#22212b); --build-text: light-dark(#292531,#eeeaf5); --build-muted: light-dark(#655d72,#b8b1c6); --build-accent: light-dark(#6551a0,#b4b6f6); --build-line: light-dark(#d1cbdc,#4a4458); --build-success: light-dark(#49751b,#92cc41); max-width: 590px; margin: auto; padding: 26px; background: var(--build-bg); color: var(--build-text); border: 3px solid var(--build-text); box-shadow: 6px 6px 0 var(--build-line); font: 14px/1.6 system-ui,sans-serif; }
+    #aseprite-build-draft * { box-sizing: border-box; }
+    #aseprite-build-draft .build-title { font: 400 13px/1.9 'Press Start 2P',monospace; margin: 0 0 10px; }
+    #aseprite-build-draft .build-meta { color: var(--build-muted); margin-bottom: 25px; }
+    #aseprite-build-draft .build-status { display: flex; align-items: center; gap: 12px; color: var(--build-accent); font-weight: 600; }
+    #aseprite-build-draft .build-status i { width: 18px; height: 18px; flex-shrink: 0; }
+    #aseprite-build-draft .build-subtitle { margin: 6px 0 23px 30px; color: var(--build-muted); }
+    #aseprite-build-draft ol { list-style: none; padding: 0; margin: 0 0 24px; }
+    #aseprite-build-draft li { display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 12px; padding: 11px 0; }
+    #aseprite-build-draft .build-mark { width: 16px; height: 16px; display: grid; place-items: center; font-size: 12px; border: 2px solid var(--build-line); }
+    #aseprite-build-draft .done .build-mark { background: var(--build-success); border-color: var(--build-success); color: var(--build-bg); }
+    #aseprite-build-draft .active { color: var(--build-accent); }
+    #aseprite-build-draft .active .build-mark { border-color: var(--build-accent); box-shadow: inset 0 0 0 3px var(--build-bg); background: var(--build-accent); }
+    #aseprite-build-draft .pending { color: var(--build-muted); }
+    #aseprite-build-draft .build-step-state { font-size: 12px; color: var(--build-muted); }
+    #aseprite-build-draft details { border-top: 1px solid var(--build-line); padding-top: 16px; }
+    #aseprite-build-draft summary { color: var(--build-accent); padding: 5px 0; }
+    #aseprite-build-draft pre { margin: 14px 0 0; padding: 14px; background: light-dark(#e9e5f0,#18171f); color: var(--build-muted); white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.8 monospace; }
+    #aseprite-build-draft .build-draft-label { margin-top: 18px; color: var(--build-muted); font-size: 12px; }
+    @media (max-width: 420px) { #aseprite-build-draft { padding: 18px 5px; } #aseprite-build-draft .build-window { padding: 18px 14px; } #aseprite-build-draft li { grid-template-columns: 18px 1fr; gap: 9px; } #aseprite-build-draft .build-step-state { display: none; } }
+  </style>
+  <section class="build-window" aria-label="Build progress concept">
+    <h2 class="build-title">BUILD ASEPRITE</h2>
+    <div class="build-meta">Selected release · Linux</div>
+    <div class="build-status"><i data-lucide="git-download" aria-hidden="true"></i>Getting the source code</div>
+    <p class="build-subtitle">Fetching Aseprite and its submodules.</p>
+    <ol aria-label="Build stages">
+      <li class="done"><span class="build-mark" aria-hidden="true">✓</span><span>Prepare workspace</span><span class="build-step-state">Done</span></li>
+      <li class="active" aria-current="step"><span class="build-mark" aria-hidden="true"></span><span>Get source code</span><span class="build-step-state">Running</span></li>
+      <li class="pending"><span class="build-mark" aria-hidden="true"></span><span>Download Skia</span><span class="build-step-state">Waiting</span></li>
+      <li class="pending"><span class="build-mark" aria-hidden="true"></span><span>Configure build</span><span class="build-step-state">Waiting</span></li>
+      <li class="pending"><span class="build-mark" aria-hidden="true"></span><span>Compile Aseprite</span><span class="build-step-state">Waiting</span></li>
+      <li class="pending"><span class="build-mark" aria-hidden="true"></span><span>Install build</span><span class="build-step-state">Waiting</span></li>
+    </ol>
+    <details>
+      <summary class="cursor-interaction">Build output</summary>
+      <pre aria-label="Illustrative build output">Cloning Aseprite…
+Receiving objects: 72% (sample output)
+Fetching submodules…</pre>
+    </details>
+    <div class="build-draft-label">Design draft · illustrative running state</div>
+  </section>
+</div>

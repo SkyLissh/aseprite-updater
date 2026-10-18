@@ -1,14 +1,15 @@
 import "package:flutter/material.dart";
-import "package:nes_ui/nes_ui.dart";
 
 import "package:auto_route/auto_route.dart";
 import "package:flutter_hooks/flutter_hooks.dart";
+import "package:hooks_riverpod/hooks_riverpod.dart";
 import "package:window_manager/window_manager.dart";
 
-import "package:aseprite_updater/core/extensions/extensions.dart";
-import "package:aseprite_updater/core/theme/theme.dart";
+import "package:aseprite_updater/features/build/build.dart";
 import "package:aseprite_updater/features/release/release.dart";
 import "package:aseprite_updater/features/window/window.dart";
+
+enum Section { build, release }
 
 @RoutePage(name: "HomeRoute")
 class Home extends HookWidget {
@@ -16,9 +17,8 @@ class Home extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
     final window = useWindow();
-    final spacing = Theme.of(context).spacing;
+    final section = useState(Section.release);
 
     return WindowShell(
       child: Scaffold(
@@ -39,28 +39,23 @@ class Home extends HookWidget {
         ),
         body: SizedBox(
           width: double.infinity,
-          child: Column(
-            mainAxisAlignment: .center,
-            children: [
-              NesIcon(iconData: NesIcons.download, size: const Size.square(64)),
-              SizedBox(height: spacing.lg),
-              const Text("Aseprite v4.2.0"),
-              SizedBox(height: spacing.lg),
-              Row(
-                mainAxisAlignment: .center,
-                children: [
-                  NesButton.text(
-                    type: .normal,
-                    text: l10n.changelog,
-                    onPressed: () =>
-                        showDialog(context: context, builder: (_) => const ReleaseModal()),
-                  ),
-                  SizedBox(width: spacing.lg),
-                  NesButton.text(type: .primary, text: l10n.update, onPressed: () {}),
-                ],
+          child: switch (section.value) {
+            .build => Consumer(
+              builder: (context, ref, _) {
+                final state = ref.watch(buildControllerProvider);
+
+                return BuildProgress(state: state);
+              },
+            ),
+            .release => Consumer(
+              builder: (context, ref, _) => ReleaseOverview(
+                onUpdate: (tag) {
+                  section.value = .build;
+                  ref.read(buildControllerProvider.notifier).run(tag: tag);
+                },
               ),
-            ],
-          ),
+            ),
+          },
         ),
       ),
     );
