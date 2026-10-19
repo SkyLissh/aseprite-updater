@@ -18,16 +18,16 @@ output should no longer be displayed as a live log in the app.
 
 This direction replaces the earlier live-tail, lazy-list, NES scrollbar,
 auto-scroll, and frozen-reading tasks. Those are no longer requirements for the
-current experience. Keep diagnostic output in a file instead.
+current experience. File logging is a separate follow-up; this implementation
+drains and discards diagnostic output after parsing progress.
 
-- [ ] **Replace the visible log panel with operation progress.** Remove the
-  BuildLogs viewer from the build screen and remove its obsolete scroll/follow
-  code when implementing the replacement. Do not add a technical-details viewer
-  as part of this work. Present friendly operation labels and an optional step
-  indicator such as "Step 3 of 4"; derive the steps from the actual workflow.
+- [x] **Replace the visible log panel with operation progress.** Removed
+  BuildLogs and its scroll/follow effects. The build screen shows localized
+  operation labels and progress without a technical-details viewer or invented
+  step counts. Verified by `test/features/build/build_progress_test.dart`.
   Sources: [Home](../lib/core/screens/home.dart),
-  [BuildProgress](../lib/features/build/widgets/build_progress.dart),
-  [BuildLogs](../lib/features/build/widgets/build_logs.dart).
+  [BuildProgress](../lib/features/build/widgets/build_progress.dart) and
+  [BuildOperationProgress](../lib/features/build/widgets/build_operation_progress.dart).
 
 ### Progress by operation
 
@@ -44,21 +44,28 @@ already. Each percentage belongs to the named operation, not the entire build.
 | CMake configuration | No universal percentage assumed | "Preparing the build…" with an animated indicator |
 | Ninja compilation | Finished build tasks / total build tasks | "Building Aseprite — 73%" |
 
-- [ ] **Use the existing NES UI widgets for known and unknown totals.** In
+- [x] **Use the existing NES UI widgets for known and unknown totals.** In
   installed nes_ui 0.32.0, NesProgressBar requires a double value from 0 to 1 and
   has no indeterminate mode. Its pixel/smooth styles only change the fill style.
   Use NesProgressBar for known progress and NesPixelRowLoadingIndicator for
   unknown progress. The pixel-row widget repeatedly fills/resets; it is not an
   indeterminate mode of the same bordered bar. A matching custom bordered
-  animation would be a separate design decision.
+  animation would be a separate design decision. Widget tests verify measured
+  progress, indeterminate workspace/submodule progress, bounded width, and no
+  animation in terminal states. Workspace directory creation remains unchanged.
 
-- [ ] **Translate Git progress into operation updates.** Keep the existing Git
-  CLI and --progress output on stderr. Parse it internally, handle carriage-return
-  updates and predictable output language, and keep raw text out of the UI.
+- [x] **Translate Git progress into operation updates.** Retained the Git
+  CLI, arguments, concurrent pipe draining, UTF-8 decoder and LineSplitter.
+  `LC_ALL=C` makes parsing predictable. Parser tests cover stderr identity,
+  malformed percentages, fragmented/carriage-return updates, remote diagnostics,
+  and submodules. A real recursive clone through SourceService against a temporary
+  local Git fixture succeeded; captured progress excerpts are replayed in tests.
   Receiving objects reaching 100% does not mean checkout or recursive submodule
   work is complete. Change the named operation when appropriate instead of
   treating every Git percentage as overall clone progress. Unknown or unparsed
   progress falls back to an animated indicator without failing the operation.
+  Ordinary diagnostics preserve the current progress. Submodule progress stays
+  indeterminate for the rest of the clone. A network Aseprite clone was not run.
   Source: [SourceService](../lib/features/build/services/source_service.dart).
 
 - [ ] **Separate dependency downloads from installation.** Use byte progress
@@ -74,33 +81,30 @@ already. Each percentage belongs to the named operation, not the entire build.
   compiler messages. Task percentage is not percentage of elapsed time: linking
   can take longer than many compilation tasks. Keep CMake configuration separate.
 
-- [ ] **Avoid a fabricated overall percentage.** Start with named operations and
+- [x] **Avoid a fabricated overall percentage.** Start with named operations and
   per-operation progress. Do not assign arbitrary weights to cloning, dependency
   installation, and compilation. If a combined percentage is later considered,
   explicitly treat it as an estimate and review that design separately.
 
 ## Build state and diagnostic output
 
-- [ ] **Keep focused subscriptions.** Subscribe the heading to phase/status and
-  the progress display to the current operation and its progress. Avoid watching
-  the entire state above both. **In progress:** Home already selects phase/status;
-  the existing output Consumer should be replaced as the live log viewer is
-  removed. Raw process output should not cause UI state updates.
+- [x] **Keep focused subscriptions.** Home still selects phase/status;
+  BuildOperationProgress selects only `(operation, progress)`. Controller tests
+  send 10,000 diagnostics without state publications; widget tests send 1,000
+  diagnostics and verify the existing progress bar widget is retained.
   Sources: [Home](../lib/core/screens/home.dart) and
   [BuildProgress](../lib/features/build/widgets/build_progress.dart).
 
-- [ ] **Remove growing output snapshots from UI state.** The controller currently
-  copies all retained lines for every new line. Route diagnostic text to the log
-  writer and progress parser instead of accumulating it for display. Keep only
-  the operation/progress and error information needed by the UI. Update affected
-  consumers and generated files when changing the state contract.
+- [x] **Remove growing output snapshots from UI state.** BuildState now holds
+  phase/status, operation/progress and errorMessage. BuildOutput is transient:
+  SourceService parses progress and the controller discards diagnostic lines.
+  Consumers and generated Freezed/Riverpod files use the new contract.
   Source: [BuildController](../lib/features/build/providers/build_controller.dart).
 
-- [ ] **Coalesce progress publication.** Publish changed progress rather than
-  every process line or repeated identical percentage. Evaluate a 100ms interval
-  for frequent updates; operation transitions and terminal states must appear
-  immediately. Preserve the latest pending progress, cancel scheduled work on
-  disposal, and do not mix progress throttling with diagnostic-file retention.
+- [x] **Coalesce progress publication.** A single non-restarting 100ms timer
+  publishes the latest changed value within an operation. Operation transitions
+  publish immediately. Tests verify duplicate suppression, coalescing, resets,
+  and cancellation on phase/operation changes, terminal states and disposal.
 
 - [ ] **Save complete diagnostic output separately.** Agreed policy: keep one
   `<app-data-root>/logs/latest-build.log`, replacing it when the next run starts.
@@ -118,20 +122,17 @@ fix. Widget rebuilds also do not imply a full-screen repaint for every event.
 
 ## Completion, failure, and window state
 
-- [ ] **Show a clear terminal result.** Stop the animation and distinguish
-  completed/failed status from the last operation. Explain failures in plain
-  language and provide access to the diagnostic-file location rather than
-  requiring the user to interpret process output. A reported 100% is not proof
-  of success: require successful operation completion/process exit before marking
-  the step complete. Verify failures with no process output and failures after
-  substantial output. Source:
+- [x] **Show a clear terminal result.** Localized idle/completed/failed headings
+  replace the last operation and stop animation (widget tests). The controller
+  requires BuildCompleted; 100% alone never completes a run. Failures retain error
+  details in state without showing raw diagnostics. Diagnostic-file access remains
+  part of the separate file-logging follow-up. Source:
   [BuildProgress](../lib/features/build/widgets/build_progress.dart).
 
-- [ ] **Handle failures deliberately.** BuildController currently records failed
-  status and rethrows, but Home does not await the returned Future. Agree on how
-  the caller and state divide error handling, retain useful diagnostics, and
-  verify that failures do not escape as unhandled asynchronous errors. Do not
-  introduce automatic retry while existing-checkout handling is unfinished.
+- [x] **Handle failures deliberately.** BuildController retains errorMessage
+  and failed status without rethrowing into Home's unawaited callback. Tests
+  verify errors, unexpected stream termination, duplicate starts, restart/reset,
+  and progress reaching 100% followed by failure. No automatic retry was added.
   Sources: [BuildController](../lib/features/build/providers/build_controller.dart)
   and [Home](../lib/core/screens/home.dart).
 
@@ -142,31 +143,36 @@ fix. Widget rebuilds also do not imply a full-screen repaint for every event.
   progress display without restarting the operation or remounting its subtree.
   Source: [WindowShell](../lib/features/window/widgets/window_shell.dart).
 
-- [ ] **Localize touched build UI text.** Existing phase/log labels are
-  hardcoded. Put new or changed labels in every existing ARB file and regenerate
-  localization output, including progress, component-count, and terminal labels.
-  Do not expand this into unrelated translation work.
+- [x] **Localize touched build UI text.** All phase, operation and terminal
+  labels use snake_case keys and context.l10n. Updated the only existing ARB
+  (`app_en.arb`) and regenerated localization output.
 
 ## Verification
 
-- [ ] Add focused coverage for Git progress parsing, operation transitions,
+- [x] Add focused coverage for Git progress parsing, operation transitions,
   known/unknown totals, duplicate progress, publication coalescing, and scheduled
   work cleanup. Include fragmented and carriage-return output, submodule
-  transitions, and unrecognized messages.
+  transitions, and unrecognized messages. Tests live in `test/features/build/`;
+  PathsService tests cover existing/nested directories and failure propagation.
 - [ ] Verify dependency byte/count progress and Ninja task progress when those
   operations are implemented; 100% followed by a failing exit must remain a
   failure, and unknown totals must not produce invented percentages.
-- [ ] Verify raw output does not rebuild the progress UI or accumulate in its
-  state. Exercise a long synthetic stream and check diagnostic-file completeness,
-  final flushing, and file-write failure reporting.
+- [x] Verify raw output does not rebuild the progress UI or accumulate in its
+  state using synthetic controller/widget streams. Diagnostic-file completeness,
+  flushing and file-write failures are deferred with logging.
 - [ ] Check measurable and unknown-progress operations, terminal results, and
   maximize/restore in the running app. Compare frame timing and memory in profile
   mode; distinguish measured improvements from static-code expectations.
-- [ ] Run relevant analysis/tests and record their scope and results. The prior
-  whole-project review found that test/widget_test.dart references missing MyApp;
-  the theme test passed. These are historical results, not a claim that current
-  checks pass. The obsolete smoke test and missing build-flow coverage remain
-  tracked below.
+- [x] Run relevant analysis/tests and record their scope and results.
+  Verified on 2026-10-19: all 26 focused build tests pass; scoped analysis of
+  `lib/features/build` and `test/features/build` reports no issues. Formatting,
+  full build_runner generation, localization generation and `git diff --check`
+  pass. Whole-project tests have 27 passing tests and the existing missing-MyApp
+  smoke-test failure. Whole-project analysis retains the baseline 22 findings:
+  that error and 21 existing lint notices. No unrelated files were changed.
+  Manual integration used a real recursive local Git clone through SourceService;
+  network Aseprite cloning, desktop visual inspection, maximize/restore, frame
+  timing and memory profiling were not performed.
 
 ## Deferred findings and unfinished work
 

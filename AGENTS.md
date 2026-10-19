@@ -70,6 +70,20 @@ Close every change with a clear account:
 
 ## Code guidelines
 
+- **Vertical spacing:** use a single blank line to separate logical steps inside methods,
+  such as setup, guard clauses, state changes, and a final return. Keep closely related
+  declarations or cleanup assignments together. Preserve intentional spacing when editing;
+  do not compress distinct steps or add a blank line after every statement mechanically.
+  For example:
+  ```dart
+  if (event.operation != state.operation) {
+    _cancelProgress();
+
+    state = state.copyWith(operation: event.operation, progress: event.value);
+
+    return;
+  }
+  ```
 - **Import paths:** relative imports are allowed for files in the current directory or its
   descendants, such as `import "build_phase.dart";` or `import "widgets/widgets.dart";`.
   Do not use relative imports containing parent-directory (`..`) segments, such as

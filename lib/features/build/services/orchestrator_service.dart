@@ -14,9 +14,7 @@ class OrchestratorService {
     await paths.ensureDirectoriesExist();
 
     yield const PhaseChanged(.cloning);
-    await for (final line in source.clone(tag: tag)) {
-      yield BuildOutput(line);
-    }
+    yield* source.clone(tag: tag);
 
     yield const PhaseChanged(.deploying);
 

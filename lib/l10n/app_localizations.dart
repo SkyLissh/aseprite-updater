@@ -145,6 +145,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get close;
+
+  /// No description provided for @build_idle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to build'**
+  String get build_idle;
+
+  /// No description provided for @build_completed.
+  ///
+  /// In en, this message translates to:
+  /// **'Build completed'**
+  String get build_completed;
+
+  /// No description provided for @build_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Build failed'**
+  String get build_failed;
+
+  /// No description provided for @build_preparing_workspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your workspace…'**
+  String get build_preparing_workspace;
+
+  /// No description provided for @build_getting_source.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting source code…'**
+  String get build_getting_source;
+
+  /// No description provided for @build_downloading_skia.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading Skia…'**
+  String get build_downloading_skia;
+
+  /// No description provided for @build_configuring.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the build…'**
+  String get build_configuring;
+
+  /// No description provided for @build_compiling.
+  ///
+  /// In en, this message translates to:
+  /// **'Building Aseprite…'**
+  String get build_compiling;
+
+  /// No description provided for @build_deploying.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing the build…'**
+  String get build_deploying;
+
+  /// No description provided for @build_connecting_source.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to the source repository…'**
+  String get build_connecting_source;
+
+  /// No description provided for @build_downloading_source.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading source…'**
+  String get build_downloading_source;
+
+  /// No description provided for @build_resolving_source.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing source…'**
+  String get build_resolving_source;
+
+  /// No description provided for @build_checking_out_source.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing source files…'**
+  String get build_checking_out_source;
+
+  /// No description provided for @build_downloading_submodules.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading source components…'**
+  String get build_downloading_submodules;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

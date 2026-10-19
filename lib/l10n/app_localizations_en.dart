@@ -40,4 +40,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get close => 'Close';
+
+  @override
+  String get build_idle => 'Ready to build';
+
+  @override
+  String get build_completed => 'Build completed';
+
+  @override
+  String get build_failed => 'Build failed';
+
+  @override
+  String get build_preparing_workspace => 'Preparing your workspace…';
+
+  @override
+  String get build_getting_source => 'Getting source code…';
+
+  @override
+  String get build_downloading_skia => 'Downloading Skia…';
+
+  @override
+  String get build_configuring => 'Preparing the build…';
+
+  @override
+  String get build_compiling => 'Building Aseprite…';
+
+  @override
+  String get build_deploying => 'Installing the build…';
+
+  @override
+  String get build_connecting_source => 'Connecting to the source repository…';
+
+  @override
+  String get build_downloading_source => 'Downloading source…';
+
+  @override
+  String get build_resolving_source => 'Preparing source…';
+
+  @override
+  String get build_checking_out_source => 'Writing source files…';
+
+  @override
+  String get build_downloading_submodules => 'Downloading source components…';
 }

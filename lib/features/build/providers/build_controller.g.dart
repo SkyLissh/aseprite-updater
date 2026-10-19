@@ -12,8 +12,7 @@ part of 'build_controller.dart';
 @ProviderFor(BuildController)
 final buildControllerProvider = BuildControllerProvider._();
 
-final class BuildControllerProvider
-    extends $NotifierProvider<BuildController, BuildState> {
+final class BuildControllerProvider extends $NotifierProvider<BuildController, BuildState> {
   BuildControllerProvider._()
     : super(
         from: null,
@@ -34,14 +33,11 @@ final class BuildControllerProvider
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(BuildState value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<BuildState>(value),
-    );
+    return $ProviderOverride(origin: this, providerOverride: $SyncValueProvider<BuildState>(value));
   }
 }
 
-String _$buildControllerHash() => r'5b7f1003cd503a444936e2cf72e987cae0910370';
+String _$buildControllerHash() => r'8677c586d5e4535598cb9e47cbca2bf60124fa4b';
 
 abstract class _$BuildController extends $Notifier<BuildState> {
   BuildState build();
