@@ -70,6 +70,32 @@ Close every change with a clear account:
 
 ## Code guidelines
 
+- **Import paths:** relative imports are allowed for files in the current directory or its
+  descendants, such as `import "build_phase.dart";` or `import "widgets/widgets.dart";`.
+  Do not use relative imports containing parent-directory (`..`) segments, such as
+  `../models/models.dart` or `../../something.dart`; use `package:aseprite_updater/...` instead.
+  Prefer existing barrel files when they expose the needed symbols.
+- **Import organization:** separate these groups with a blank line, in this order (omit empty groups):
+  1. Dart SDK imports (`dart:...`), Flutter framework, and the UI package (`nes_ui`).
+  2. State management, generators/annotations, and other third-party libraries.
+  3. Project `package:aseprite_updater/...` imports, preferring existing barrels.
+  4. Relative imports within the current directory or its descendants
+     (`"something.dart"`, `"widgets/widgets.dart"`).
+  For example:
+  ```dart
+  import "dart:async";
+  import "package:flutter/material.dart";
+  import "package:nes_ui/nes_ui.dart";
+
+  import "package:flutter_hooks/flutter_hooks.dart";
+  import "package:hooks_riverpod/hooks_riverpod.dart";
+
+  import "package:aseprite_updater/core/theme/theme.dart";
+  import "package:aseprite_updater/features/build/providers/providers.dart";
+
+  import "build_phase.dart";
+  import "widgets/widgets.dart";
+  ```
 - **Feature-based architecture** (`core/`, `l10n/`, `features/<feature>/{models,services,
   providers,widgets}`). Flat inside features; no `data/domain/presentation` ceremony.
 - **One widget per file.** Two widgets in a file are acceptable only when the second is small

@@ -1,23 +1,28 @@
-import "package:aseprite_updater/core/theme/theme.dart";
 import "package:flutter/material.dart";
 import "package:nes_ui/nes_ui.dart";
 
+import "package:flutter_hooks/flutter_hooks.dart";
+import "package:hooks_riverpod/hooks_riverpod.dart";
+
+import "package:aseprite_updater/core/theme/theme.dart";
+import "package:aseprite_updater/features/build/widgets/build_logs.dart";
 import "package:aseprite_updater/features/build/providers/providers.dart";
+import "package:aseprite_updater/features/build/models/models.dart";
 
-class BuildProgress extends StatelessWidget {
-  final BuildState state;
+class BuildProgress extends HookWidget {
+  final BuildStatus status;
+  final BuildPhase phase;
 
-  const new({required this.state, super.key});
+  const new({required this.status, required this.phase, super.key});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.sizeOf(context);
 
     return Column(
       mainAxisAlignment: .center,
       children: [
-        Text(switch (state.phase) {
+        Text(switch (phase) {
           .preparing => "Preparing build...",
           .cloning => "Getting source code...",
           .downloadingSkia => "Downloading Skia...",
@@ -26,19 +31,15 @@ class BuildProgress extends StatelessWidget {
           .deploying => "Deploying build...",
         }, style: Theme.of(context).textTheme.titleLarge),
         SizedBox(height: theme.spacing.lg),
-        if (state.status == .running) ...[
+        if (status == .running) ...[
           NesJumpingIconsLoadingIndicator(icons: [NesIcons.heart, NesIcons.energy, NesIcons.moon]),
           SizedBox(height: theme.spacing.md),
-          NesContainer(
-            label: "Building",
-            width: size.width * 0.4 + 80,
-            height: 240,
-            child: NesSingleChildScrollView(
-              child: Padding(
-                padding: .all(theme.spacing.md),
-                child: Text(state.output.join("\n"), style: theme.textTheme.bodyMedium),
-              ),
-            ),
+          Consumer(
+            builder: (context, ref, _) {
+              final output = ref.watch(buildControllerProvider.select((state) => state.output));
+
+              return BuildLogs(status: status, output: output);
+            },
           ),
         ],
       ],

@@ -42,9 +42,10 @@ class Home extends HookWidget {
           child: switch (section.value) {
             .build => Consumer(
               builder: (context, ref, _) {
-                final state = ref.watch(buildControllerProvider);
+                final status = ref.watch(buildControllerProvider.select((state) => state.status));
+                final phase = ref.watch(buildControllerProvider.select((state) => state.phase));
 
-                return BuildProgress(state: state);
+                return BuildProgress(status: status, phase: phase);
               },
             ),
             .release => Consumer(
