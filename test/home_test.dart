@@ -44,8 +44,9 @@ void main() {
         expect(find.text("Preparing your workspace…"), findsOneWidget);
         expect(find.text("Update"), findsNothing);
 
-        orchestrator.add(const PhaseChanged(.cloning));
-        orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: 1));
+        orchestrator.add(
+          const StepChanged(BuildStep.cloning(operation: .downloadingSource, progress: 1)),
+        );
         await tester.pump();
         expect(find.byType(NesProgressBar), findsOneWidget);
         expect(container.read(buildControllerProvider).status, BuildStatus.running);

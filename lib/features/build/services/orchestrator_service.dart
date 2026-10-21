@@ -3,20 +3,20 @@ import "package:aseprite_updater/features/build/models/models.dart";
 import "paths_service.dart";
 import "source_service.dart";
 
-class OrchestratorService {
-  final PathsService paths;
-  final SourceService source;
-
-  new(this.paths, this.source);
-
+class OrchestratorService(final PathsService paths, final SourceService source) {
   Stream<BuildEvent> run({required String tag}) async* {
-    yield const PhaseChanged(.preparing);
+    yield const StepChanged(BuildStep.preparing());
     await paths.ensureDirectoriesExist();
 
-    yield const PhaseChanged(.cloning);
-    yield* source.clone(tag: tag);
+    yield const StepChanged(BuildStep.cloning(operation: .connectingSource));
 
-    yield const PhaseChanged(.deploying);
+    await for (final progress in source.clone(tag: tag)) {
+      yield StepChanged(
+        BuildStep.cloning(operation: progress.operation, progress: progress.progress),
+      );
+    }
+
+    yield const StepChanged(BuildStep.deploying());
 
     yield const BuildCompleted();
   }

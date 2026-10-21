@@ -13,16 +13,16 @@ void main() {
 
   test("recognizes local receiving, resolving and checkout progress", () {
     for (final (line, operation, value) in [
-      ("Receiving objects:  42% (42/100), 1 MiB | 2 MiB/s", BuildOperation.downloadingSource, .42),
-      ("Resolving deltas: 100% (4/4), done.", BuildOperation.resolvingSource, 1.0),
-      ("Updating files:  12% (12/100)", BuildOperation.checkingOutSource, .12),
-      ("Checking out files:  25% (25/100)", BuildOperation.checkingOutSource, .25),
-      ("Receiving objects: 0% (0/100)", BuildOperation.downloadingSource, 0.0),
-      ("Updating files: 100%", BuildOperation.checkingOutSource, 1.0),
+      ("Receiving objects:  42% (42/100), 1 MiB | 2 MiB/s", GitOperation.downloadingSource, .42),
+      ("Resolving deltas: 100% (4/4), done.", GitOperation.resolvingSource, 1.0),
+      ("Updating files:  12% (12/100)", GitOperation.checkingOutSource, .12),
+      ("Checking out files:  25% (25/100)", GitOperation.checkingOutSource, .25),
+      ("Receiving objects: 0% (0/100)", GitOperation.downloadingSource, 0.0),
+      ("Updating files: 100%", GitOperation.checkingOutSource, 1.0),
     ]) {
       final event = parser.parse(line, isStderr: true)!;
       expect(event.operation, operation);
-      expect(event.value, value);
+      expect(event.progress, value);
     }
   });
 
@@ -37,16 +37,16 @@ void main() {
       expect(parser.parse(line, isStderr: true), isNull);
     }
     expect(parser.parse("Receiving objects: 50% (1/2)", isStderr: false), isNull);
-    expect(parser.parse("Receiving objects: 50% (1/2)", isStderr: true)!.value, .5);
+    expect(parser.parse("Receiving objects: 50% (1/2)", isStderr: true)!.progress, .5);
     expect(parser.parse("warning: diagnostic", isStderr: true), isNull);
-    expect(parser.parse("Receiving objects: 60% (3/5)", isStderr: true)!.value, .6);
+    expect(parser.parse("Receiving objects: 60% (3/5)", isStderr: true)!.progress, .6);
   });
 
   test("recognized operations with unusable percentages are indeterminate", () {
     for (final percentage in ["unknown", "-1%", "101%", "NaN%", "1.5%", "20oops%", ""]) {
       final event = parser.parse("Receiving objects: $percentage (1/2)", isStderr: true)!;
-      expect(event.operation, BuildOperation.downloadingSource);
-      expect(event.value, isNull, reason: percentage);
+      expect(event.operation, GitOperation.downloadingSource);
+      expect(event.progress, isNull, reason: percentage);
     }
   });
 
@@ -56,8 +56,8 @@ void main() {
       "Submodule 'foo' (https://example.com/foo) registered for path 'foo'",
       isStderr: true,
     )!;
-    expect(registration.operation, BuildOperation.downloadingSubmodules);
-    expect(registration.value, isNull);
+    expect(registration.operation, GitOperation.downloadingSubmodules);
+    expect(registration.progress, isNull);
     expect(parser.parse("warning: diagnostic", isStderr: true), isNull);
     for (final line in [
       "Cloning into '/tmp/aseprite/foo'...",
@@ -68,8 +68,8 @@ void main() {
       "Receiving objects: 3% (3/100)",
     ]) {
       final event = parser.parse(line, isStderr: true)!;
-      expect(event.operation, BuildOperation.downloadingSubmodules);
-      expect(event.value, isNull);
+      expect(event.operation, GitOperation.downloadingSubmodules);
+      expect(event.progress, isNull);
     }
   });
 
@@ -79,24 +79,24 @@ void main() {
 
     for (final percentage in ["unknown", "-1%", "101%", "NaN%", "1.5%", "20oops%", ""]) {
       final event = parser.parse("Receiving objects: $percentage (1/2)", isStderr: true)!;
-      expect(event.operation, BuildOperation.downloadingSubmodules);
-      expect(event.value, isNull, reason: percentage);
+      expect(event.operation, GitOperation.downloadingSubmodules);
+      expect(event.progress, isNull, reason: percentage);
     }
 
     expect(parser.parse("Receiving objects: 50% (1/2)", isStderr: false), isNull);
     expect(parser.parse("remote: Receiving objects: 50% (1/2)", isStderr: true), isNull);
     expect(parser.parse("warning: diagnostic", isStderr: true), isNull);
-    expect(parser.parse("Receiving objects: 50% (1/2)", isStderr: true)!.value, isNull);
+    expect(parser.parse("Receiving objects: 50% (1/2)", isStderr: true)!.progress, isNull);
   });
 
   test("a subsequent clone header detects submodules without registration", () {
     expect(parser.parse("Cloning into '/tmp/aseprite'...", isStderr: true), isNull);
     expect(
       parser.parse("Cloning into '/tmp/aseprite/foo'...", isStderr: true)!.operation,
-      BuildOperation.downloadingSubmodules,
+      GitOperation.downloadingSubmodules,
     );
-    expect(parser.parse("Receiving objects: 50% (1/2)", isStderr: true)!.value, isNull);
-    expect(GitProgressParser().parse("Receiving objects: 50% (1/2)", isStderr: true)!.value, .5);
+    expect(parser.parse("Receiving objects: 50% (1/2)", isStderr: true)!.progress, isNull);
+    expect(GitProgressParser().parse("Receiving objects: 50% (1/2)", isStderr: true)!.progress, .5);
   });
 
   test("UTF-8 and LineSplitter preserve fragmented carriage-return updates", () async {
@@ -110,22 +110,22 @@ void main() {
         .map((line) => parser.parse(line, isStderr: true))
         .where((event) => event != null)
         .toList();
-    expect(events.map((event) => event!.value), [.1, .2, 1.0]);
+    expect(events.map((event) => event!.progress), [.1, .2, 1.0]);
   });
 
   test("replays progress excerpts captured from a real recursive Git clone", () async {
     // Local recursive SourceService clone; only temporary paths were normalized.
     final lines = await File("test/features/build/fixtures/git_clone.txt").readAsLines();
     final events = lines.map((line) => parser.parse(line, isStderr: true)).nonNulls.toList();
-    expect(events.take(4).map((event) => event.value), [.01, .5, 1.0, 1.0]);
+    expect(events.take(4).map((event) => event.progress), [.01, .5, 1.0, 1.0]);
     expect(
       events.skip(4).take(4).map((event) => event.operation),
-      everyElement(BuildOperation.resolvingSource),
+      everyElement(GitOperation.resolvingSource),
     );
     expect(
       events.skip(8).map((event) => event.operation),
-      everyElement(BuildOperation.downloadingSubmodules),
+      everyElement(GitOperation.downloadingSubmodules),
     );
-    expect(events.skip(8).map((event) => event.value), everyElement(isNull));
+    expect(events.skip(8).map((event) => event.progress), everyElement(isNull));
   });
 }

@@ -26,41 +26,43 @@ void main() {
   tearDown(() => container.dispose());
 
   BuildState current() => container.read(buildControllerProvider);
+  void step(BuildStep value) => orchestrator.add(StepChanged(value));
+  void cloneProgress(double? value, {GitOperation operation = .downloadingSource}) =>
+      step(BuildStep.cloning(operation: operation, progress: value));
 
-  testWidgets("duplicates and diagnostics do not publish; latest value coalesces at 100ms", (
-    tester,
-  ) async {
+  testWidgets("equal snapshots do not publish; latest value coalesces at 100ms", (tester) async {
     unawaited(controller.run(tag: "v1"));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .1));
+    cloneProgress(.1);
     await tester.pump();
     final count = states.length;
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .1));
-    for (var i = 0; i < 10000; i++) {
-      orchestrator.add(BuildOutput("diagnostic $i"));
-    }
+    cloneProgress(.1);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
     expect(states, hasLength(count));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .2));
+
+    cloneProgress(.2);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 60));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .3));
+    cloneProgress(.3);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 39));
-    expect(current().progress, .1);
+    expect(current().step.fraction, .1);
     await tester.pump(const Duration(milliseconds: 1));
-    expect(current().progress, .3);
+    expect(current().step.fraction, .3);
     expect(states, hasLength(count + 1));
     orchestrator.add(const BuildCompleted());
     await tester.pump();
   });
 
-  testWidgets("latest value returning to the published value suppresses an update", (tester) async {
+  testWidgets("latest snapshot returning to the published value suppresses an update", (
+    tester,
+  ) async {
     unawaited(controller.run(tag: "v1"));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .1));
+    cloneProgress(.1);
     await tester.pump();
     final count = states.length;
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .2));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .1));
+    cloneProgress(.2);
+    cloneProgress(.1);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(states, hasLength(count));
@@ -68,68 +70,92 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets("operation and phase transitions are immediate and cancel stale timers", (
+  testWidgets("operation and step transitions are atomic and cancel stale snapshots", (
     tester,
   ) async {
     unawaited(controller.run(tag: "v1"));
-    orchestrator.add(const PhaseChanged(.cloning));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .1));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .8));
+    cloneProgress(.1);
+    cloneProgress(.8);
     await tester.pump();
-    orchestrator.add(const ProgressChanged(operation: .resolvingSource, value: .2));
+    cloneProgress(.2, operation: .resolvingSource);
     await tester.pump();
-    expect(current().operation, BuildOperation.resolvingSource);
-    expect(current().progress, .2);
+    expect(current().step, const BuildStep.cloning(operation: .resolvingSource, progress: .2));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(current().progress, .2);
-    orchestrator.add(const ProgressChanged(operation: .resolvingSource, value: .9));
-    orchestrator.add(const PhaseChanged(.deploying));
+    expect(current().step.fraction, .2);
+
+    cloneProgress(.9, operation: .resolvingSource);
+    step(const BuildStep.downloadingSkia(receivedBytes: 10, totalBytes: 100));
     await tester.pump();
-    expect(current().operation, isNull);
-    expect(current().progress, isNull);
+    expect(current().step, const BuildStep.downloadingSkia(receivedBytes: 10, totalBytes: 100));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(current().progress, isNull);
+    expect(current().step.fraction, .1);
+
+    step(const BuildStep.deploying());
+    await tester.pump();
+    expect(current().step, const BuildStep.deploying());
+    expect(current().step.fraction, isNull);
     orchestrator.add(const BuildCompleted());
     await tester.pump();
   });
 
-  testWidgets("100 percent does not complete; terminal events cancel pending updates", (
+  testWidgets("download and compilation coalesce complete snapshots including raw counts", (
+    tester,
+  ) async {
+    unawaited(controller.run(tag: "v1"));
+    step(const BuildStep.downloadingSkia(receivedBytes: 10, totalBytes: 100));
+    step(const BuildStep.downloadingSkia(receivedBytes: 20, totalBytes: 200));
+    await tester.pump();
+    expect(current().step, const BuildStep.downloadingSkia(receivedBytes: 10, totalBytes: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(current().step, const BuildStep.downloadingSkia(receivedBytes: 20, totalBytes: 200));
+
+    step(const BuildStep.compiling(completedTasks: 1, totalTasks: 10));
+    step(const BuildStep.compiling(completedTasks: 4, totalTasks: 20));
+    await tester.pump();
+    expect(current().step, const BuildStep.compiling(completedTasks: 1, totalTasks: 10));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(current().step, const BuildStep.compiling(completedTasks: 4, totalTasks: 20));
+    orchestrator.add(const BuildCompleted());
+    await tester.pump();
+  });
+
+  testWidgets("100 percent does not complete; completion retains the last published step", (
     tester,
   ) async {
     final run = controller.run(tag: "v1");
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: 1));
+    cloneProgress(1);
     await tester.pump();
     expect(current().status, BuildStatus.running);
-    orchestrator.add(const ProgressChanged(operation: .resolvingSource, value: .1));
-    orchestrator.add(const ProgressChanged(operation: .resolvingSource, value: .9));
+    cloneProgress(.1, operation: .resolvingSource);
+    cloneProgress(.9, operation: .resolvingSource);
     orchestrator.add(const BuildCompleted());
     await tester.pump();
-    expect(current().status, BuildStatus.completed);
     await tester.runAsync(() => run);
     expect(current().status, BuildStatus.completed);
-    expect(current().operation, isNull);
+    expect(current().step, const BuildStep.cloning(operation: .resolvingSource, progress: .1));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(current().progress, isNull);
+    expect(current().step.fraction, .1);
   });
 
-  testWidgets("exceptions are retained without escaping; restarting resets all run fields", (
+  testWidgets("failures cancel pending updates; restarting resets the step and error", (
     tester,
   ) async {
     final run = controller.run(tag: "v1");
     await controller.run(tag: "ignored");
     expect(orchestrator.tags, ["v1"]);
-    orchestrator.add(const PhaseChanged(.cloning));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: 1));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .5));
+    cloneProgress(1);
+    cloneProgress(.5);
     orchestrator.streams.last.addError(StateError("clone failed"));
     await tester.pump();
     await tester.runAsync(() => expectLater(run, completes));
     expect(current().status, BuildStatus.failed);
     expect(current().errorMessage, contains("clone failed"));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(current().progress, isNull);
+    expect(current().step.fraction, 1);
+
     final restart = controller.run(tag: "v2");
     expect(current(), const BuildState(status: .running));
+    expect(current().step, const BuildStep.preparing());
     expect(orchestrator.tags, ["v1", "v2"]);
     orchestrator.add(const BuildCompleted());
     await tester.pump();
@@ -137,7 +163,7 @@ void main() {
     expect(current().status, BuildStatus.completed);
   });
 
-  testWidgets("an unexpected stream end fails even without output", (tester) async {
+  testWidgets("an unexpected stream end fails without completing", (tester) async {
     final run = controller.run(tag: "v1");
     unawaited(orchestrator.streams.last.close());
     await tester.pump();
@@ -153,28 +179,28 @@ void main() {
     await tester.runAsync(() => first);
     unawaited(controller.run(tag: "v2"));
     expect(current(), const BuildState(status: .running));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .1));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource));
+    cloneProgress(.1);
+    cloneProgress(null);
     await tester.pump();
-    expect(current().progress, .1);
+    expect(current().step.fraction, .1);
     await tester.pump(const Duration(milliseconds: 100));
-    expect(current().progress, isNull);
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .6));
+    expect(current().step.fraction, isNull);
+    cloneProgress(.6);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
-    expect(current().progress, .6);
+    expect(current().step.fraction, .6);
     orchestrator.add(const BuildCompleted());
     await tester.pump();
   });
 
   testWidgets("disposal cancels scheduled updates and ignores late events", (tester) async {
     final run = controller.run(tag: "v1");
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .1));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .9));
+    cloneProgress(.1);
+    cloneProgress(.9);
     await tester.pump();
     final count = states.length;
     container.dispose();
-    orchestrator.add(const PhaseChanged(.deploying));
+    step(const BuildStep.deploying());
     await tester.pump(const Duration(milliseconds: 100));
     await tester.runAsync(() => run);
     expect(states, hasLength(count));

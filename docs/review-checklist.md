@@ -90,28 +90,35 @@ already. Each percentage belongs to the named operation, not the entire build.
 
 ## Build state and diagnostic output
 
-- [x] **Keep focused subscriptions.** Home still selects phase/status;
-  BuildOperationProgress selects only `(operation, progress)`. Controller tests
-  send 10,000 diagnostics without state publications; widget tests send 1,000
-  diagnostics and verify the existing progress bar widget is retained.
+- [x] **Keep focused subscriptions.** Home selects run status. BuildProgress
+  selects the localized step heading; BuildOperationProgress selects the typed
+  step snapshot. Measurement updates preserve the heading and progress subtree.
+  Equal snapshots do not publish; widget tests send 1,000 equal snapshots and
+  verify the existing progress bar widget is retained.
   Sources: [Home](../lib/core/screens/home.dart) and
   [BuildProgress](../lib/features/build/widgets/build_progress.dart).
 
-- [x] **Remove growing output snapshots from UI state.** BuildState now holds
-  phase/status, operation/progress and errorMessage. BuildOutput is transient:
-  SourceService parses progress and the controller discards diagnostic lines.
-  Consumers and generated Freezed/Riverpod files use the new contract.
+- [x] **Remove growing output snapshots from UI state.** BuildState holds a
+  sealed BuildStep snapshot, run status and errorMessage. Step variants carry
+  Git operations, byte counts or task counts; no separate phase enum is stored.
+  SourceService emits only GitProgress, and the orchestrator maps it to
+  StepChanged. Raw process output is parsed and discarded inside SourceService;
+  there are no diagnostic output events.
+  Consumers and generated Freezed/Riverpod files use this contract.
   Source: [BuildController](../lib/features/build/providers/build_controller.dart).
 
 - [x] **Coalesce progress publication.** A single non-restarting 100ms timer
-  publishes the latest changed value within an operation. Operation transitions
-  publish immediately. Tests verify duplicate suppression, coalescing, resets,
-  and cancellation on phase/operation changes, terminal states and disposal.
+  publishes the latest complete snapshot within a step and Git operation.
+  Step-type and Git-operation transitions publish immediately. Tests verify
+  duplicate suppression, raw-count updates, coalescing, resets and cancellation
+  on transitions, terminal states and disposal.
 
 - [ ] **Save complete diagnostic output separately.** Agreed policy: keep one
   `<app-data-root>/logs/latest-build.log`, replacing it when the next run starts.
-  Preserve all received output with a persistent buffered writer rather than
-  opening/flushing per line, and finish writing on success or failure. Make the
+  Supply one shared writer to the services, managed per run outside controller
+  and UI state; do not reintroduce output events. Preserve all received output
+  with a persistent buffered writer rather than opening/flushing per line, and
+  finish writing on success or failure. Make the
   file location discoverable for troubleshooting without showing its contents
   in the app. Decide and review how file-write failures are reported without
   masking the build result. Source for the app-data root:
@@ -127,8 +134,8 @@ fix. Widget rebuilds also do not imply a full-screen repaint for every event.
 - [x] **Show a clear terminal result.** Localized idle/completed/failed headings
   replace the last operation and stop animation (widget tests). The controller
   requires BuildCompleted; 100% alone never completes a run. Failures retain error
-  details in state without showing raw diagnostics. Diagnostic-file access remains
-  part of the separate file-logging follow-up. Source:
+  details and the last published step in state without showing raw diagnostics.
+  Diagnostic-file access remains part of the separate file-logging follow-up. Source:
   [BuildProgress](../lib/features/build/widgets/build_progress.dart).
 
 - [x] **Handle failures deliberately.** BuildController retains errorMessage
@@ -162,13 +169,23 @@ fix. Widget rebuilds also do not imply a full-screen repaint for every event.
 - [ ] Verify dependency byte/count progress and Ninja task progress when those
   operations are implemented; 100% followed by a failing exit must remain a
   failure, and unknown totals must not produce invented percentages.
-- [x] Verify raw output does not rebuild the progress UI or accumulate in its
-  state using synthetic controller/widget streams. Diagnostic-file completeness,
-  flushing and file-write failures are deferred with logging.
+- [x] Verify equal snapshots do not rebuild the progress UI, and measurement
+  updates preserve its heading. Raw diagnostics never enter controller state;
+  parser tests verify unrelated lines do not alter progress.
+  Diagnostic-file completeness, flushing and file-write failures are deferred
+  with logging.
 - [ ] Check measurable and unknown-progress operations, terminal results, and
   maximize/restore in the running app. Compare frame timing and memory in profile
   mode; distinguish measured improvements from static-code expectations.
 - [x] Run relevant analysis/tests and record their scope and results.
+  Verified on 2026-10-20 after the typed-step migration: all 69 tests pass,
+  including 38 build tests and 2 Home tests. Tests were migrated before
+  production code; the initial run failed on the missing new model contracts.
+  Whole-project analysis has no errors or warnings; the same 13 generated
+  `release.g.dart` double-quote lint notices remain. The Skia service is a
+  disconnected typed stub, not a working downloader. No live Git clone or
+  native desktop visual verification was performed for this migration.
+
   Verified on 2026-10-19: `flutter test --coverage` passes all 58 tests, including
   27 focused build tests. The obsolete MyApp test and leftover percentage
   expectations no longer block the suite. Whole-project analysis has no errors

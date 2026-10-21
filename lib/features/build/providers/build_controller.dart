@@ -16,10 +16,8 @@ enum BuildStatus { idle, running, completed, failed }
 @freezed
 abstract class BuildState with _$BuildState {
   const factory({
-    @Default(BuildPhase.preparing) BuildPhase phase,
+    @Default(BuildStep.preparing()) BuildStep step,
     @Default(BuildStatus.idle) BuildStatus status,
-    BuildOperation? operation,
-    double? progress,
     String? errorMessage,
   }) = _BuildState;
 }
@@ -28,7 +26,7 @@ abstract class BuildState with _$BuildState {
 class BuildController extends _$BuildController {
   late OrchestratorService _orchestrator;
   Timer? _progressTimer;
-  ProgressChanged? _pendingProgress;
+  BuildStep? _pendingStep;
 
   @override
   BuildState build() {
@@ -49,16 +47,11 @@ class BuildController extends _$BuildController {
         if (!ref.mounted) return;
 
         switch (event) {
-          case PhaseChanged(:final phase):
-            _cancelProgress();
-            state = state.copyWith(phase: phase, operation: null, progress: null);
-          case ProgressChanged():
-            _queueProgress(event);
-          case BuildOutput():
-            break;
+          case StepChanged(:final step):
+            _queueStep(step);
           case BuildCompleted():
             _cancelProgress();
-            state = state.copyWith(status: .completed, operation: null, progress: null);
+            state = state.copyWith(status: .completed);
             return;
         }
       }
@@ -68,37 +61,42 @@ class BuildController extends _$BuildController {
     } catch (error) {
       _cancelProgress();
       if (ref.mounted) {
-        state = state.copyWith(
-          status: .failed,
-          operation: null,
-          progress: null,
-          errorMessage: error.toString(),
-        );
+        state = state.copyWith(status: .failed, errorMessage: error.toString());
       }
     }
   }
 
-  void _queueProgress(ProgressChanged event) {
-    if (event.operation != state.operation) {
+  void _queueStep(BuildStep step) {
+    final isTransition = switch ((state.step, step)) {
+      (Cloning(operation: final current), Cloning(operation: final next)) => current != next,
+      (Preparing(), Preparing()) ||
+      (DownloadingSkia(), DownloadingSkia()) ||
+      (Configuring(), Configuring()) ||
+      (Compiling(), Compiling()) ||
+      (Deploying(), Deploying()) => false,
+      _ => true,
+    };
+
+    if (isTransition) {
       _cancelProgress();
 
-      state = state.copyWith(operation: event.operation, progress: event.value);
+      state = state.copyWith(step: step);
 
       return;
     }
 
-    _pendingProgress = event;
+    if (step == state.step && _progressTimer == null) return;
 
-    if (event.value == state.progress && _progressTimer == null) return;
+    _pendingStep = step;
 
     _progressTimer ??= Timer(const Duration(milliseconds: 100), () {
-      final pending = _pendingProgress;
+      final pending = _pendingStep;
 
       _progressTimer = null;
-      _pendingProgress = null;
+      _pendingStep = null;
 
-      if (ref.mounted && pending != null && pending.value != state.progress) {
-        state = state.copyWith(progress: pending.value);
+      if (ref.mounted && pending != null && pending != state.step) {
+        state = state.copyWith(step: pending);
       }
     });
   }
@@ -106,6 +104,6 @@ class BuildController extends _$BuildController {
   void _cancelProgress() {
     _progressTimer?.cancel();
     _progressTimer = null;
-    _pendingProgress = null;
+    _pendingStep = null;
   }
 }

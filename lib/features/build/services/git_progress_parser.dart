@@ -5,13 +5,13 @@ class GitProgressParser {
   bool _seenCloneHeader = false;
   bool _submodules = false;
 
-  ProgressChanged? parse(String line, {required bool isStderr}) {
+  GitProgress? parse(String line, {required bool isStderr}) {
     if (!isStderr) return null;
 
     if (line.startsWith("Submodule '") && line.contains(" registered for path '")) {
       _submodules = true;
 
-      return const ProgressChanged(operation: .downloadingSubmodules);
+      return const GitProgress(operation: .downloadingSubmodules);
     }
 
     if (line.startsWith("Cloning into '")) {
@@ -19,10 +19,10 @@ class GitProgressParser {
 
       _seenCloneHeader = true;
 
-      return _submodules ? const ProgressChanged(operation: .downloadingSubmodules) : null;
+      return _submodules ? const GitProgress(operation: .downloadingSubmodules) : null;
     }
 
-    final BuildOperation operation;
+    final GitOperation operation;
     final String progress;
     if (line.startsWith("Receiving objects:")) {
       operation = .downloadingSource;
@@ -40,14 +40,14 @@ class GitProgressParser {
       return null;
     }
 
-    if (_submodules) return const ProgressChanged(operation: .downloadingSubmodules);
+    if (_submodules) return const GitProgress(operation: .downloadingSubmodules);
 
     final match = _percentage.firstMatch(progress);
     final percentage = match == null ? null : int.tryParse(match.group(1)!);
 
-    return ProgressChanged(
+    return GitProgress(
       operation: operation,
-      value: percentage != null && percentage <= 100 ? percentage / 100 : null,
+      progress: percentage != null && percentage <= 100 ? percentage / 100 : null,
     );
   }
 }

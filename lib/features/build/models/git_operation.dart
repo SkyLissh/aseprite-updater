@@ -1,4 +1,4 @@
-enum BuildOperation {
+enum GitOperation {
   connectingSource,
   downloadingSource,
   resolvingSource,

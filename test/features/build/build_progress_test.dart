@@ -39,7 +39,6 @@ void main() {
               child: Consumer(
                 builder: (context, ref, _) => BuildProgress(
                   status: ref.watch(buildControllerProvider.select((state) => state.status)),
-                  phase: ref.watch(buildControllerProvider.select((state) => state.phase)),
                 ),
               ),
             ),
@@ -57,8 +56,7 @@ void main() {
     expect(find.text("Preparing your workspace…"), findsOneWidget);
     expect(find.byType(NesPixelRowLoadingIndicator), findsOneWidget);
     expect(find.byType(NesProgressBar), findsNothing);
-    orchestrator.add(const PhaseChanged(.cloning));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSubmodules));
+    orchestrator.add(const StepChanged(BuildStep.cloning(operation: .downloadingSubmodules)));
     await tester.pump();
     expect(find.text("Downloading source components…"), findsOneWidget);
     expect(find.byType(NesPixelRowLoadingIndicator), findsOneWidget);
@@ -68,12 +66,13 @@ void main() {
     expect(tester.binding.transientCallbackCount, 0);
   });
 
-  testWidgets("measured clone progress uses a bounded bar; diagnostics do not rebuild it", (
+  testWidgets("measured clone progress uses a bounded bar; equal snapshots do not rebuild it", (
     tester,
   ) async {
     unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
-    orchestrator.add(const PhaseChanged(.cloning));
-    orchestrator.add(const ProgressChanged(operation: .downloadingSource, value: .42));
+    orchestrator.add(
+      const StepChanged(BuildStep.cloning(operation: .downloadingSource, progress: .42)),
+    );
     await showProgress(tester, width: 180);
     await tester.pump();
     final bar = tester.widget<NesProgressBar>(find.byType(NesProgressBar));
@@ -82,7 +81,9 @@ void main() {
     expect(find.byType(NesPixelRowLoadingIndicator), findsNothing);
     expect(tester.getSize(find.byType(NesProgressBar)).width, lessThanOrEqualTo(180));
     for (var i = 0; i < 1000; i++) {
-      orchestrator.add(BuildOutput("diagnostic $i"));
+      orchestrator.add(
+        StepChanged(BuildStep.cloning(operation: .downloadingSource, progress: bar.value)),
+      );
     }
     await tester.pump();
     expect(identical(tester.widget(find.byType(NesProgressBar)), bar), isTrue);
@@ -91,14 +92,62 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets("measurement updates preserve the heading and progress subtree", (tester) async {
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    orchestrator.add(
+      const StepChanged(BuildStep.cloning(operation: .downloadingSource, progress: .1)),
+    );
+    await showProgress(tester);
+    await tester.pump();
+    final heading = tester.widget<Text>(find.text("Getting source code…"));
+    final progressElement = tester.element(find.byType(BuildOperationProgress));
+
+    orchestrator.add(
+      const StepChanged(BuildStep.cloning(operation: .downloadingSource, progress: .6)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.widget<NesProgressBar>(find.byType(NesProgressBar)).value, .6);
+    expect(tester.widget<Text>(find.text("Getting source code…")), same(heading));
+    expect(tester.element(find.byType(BuildOperationProgress)), same(progressElement));
+    orchestrator.add(const BuildCompleted());
+    await tester.pump();
+  });
+
+  for (final (step, heading, fraction) in <(BuildStep, String, double?)>[
+    (const BuildStep.downloadingSkia(receivedBytes: 25, totalBytes: 100), "Downloading Skia…", .25),
+    (const BuildStep.downloadingSkia(receivedBytes: 25), "Downloading Skia…", null),
+    (const BuildStep.configuring(), "Preparing the build…", null),
+    (const BuildStep.compiling(completedTasks: 3, totalTasks: 4), "Building Aseprite…", .75),
+    (const BuildStep.compiling(completedTasks: 3), "Building Aseprite…", null),
+    (const BuildStep.deploying(), "Installing the build…", null),
+  ]) {
+    testWidgets("$step renders its heading and measured or unknown progress", (tester) async {
+      unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+      orchestrator.add(StepChanged(step));
+      await showProgress(tester);
+      await tester.pump();
+      expect(find.text(heading), findsOneWidget);
+      expect(find.text("Connecting to the source repository…"), findsNothing);
+      if (fraction == null) {
+        expect(find.byType(NesProgressBar), findsNothing);
+        expect(find.byType(NesPixelRowLoadingIndicator), findsOneWidget);
+      } else {
+        expect(tester.widget<NesProgressBar>(find.byType(NesProgressBar)).value, fraction);
+        expect(find.byType(NesPixelRowLoadingIndicator), findsNothing);
+      }
+      orchestrator.add(const BuildCompleted());
+      await tester.pump();
+    });
+  }
+
   for (final status in [BuildStatus.idle, BuildStatus.completed, BuildStatus.failed]) {
     testWidgets("$status shows a terminal label and no animation or stale operation", (
       tester,
     ) async {
       if (status != BuildStatus.idle) {
         unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
-        orchestrator.add(const PhaseChanged(.cloning));
-        orchestrator.add(const ProgressChanged(operation: .downloadingSubmodules));
+        orchestrator.add(const StepChanged(BuildStep.cloning(operation: .downloadingSubmodules)));
         await showProgress(tester);
         if (status == BuildStatus.failed) {
           orchestrator.streams.last.addError(StateError("clone failed"));
