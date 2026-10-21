@@ -1,30 +1,57 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+import "package:flutter/material.dart";
+import "package:nes_ui/nes_ui.dart";
 
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
+import "package:flutter_test/flutter_test.dart";
+import "package:hooks_riverpod/hooks_riverpod.dart";
+import "package:window_manager/window_manager.dart";
 
-import 'package:aseprite_updater/main.dart';
+import "package:aseprite_updater/core/screens/home.dart";
+import "package:aseprite_updater/features/release/providers/providers.dart";
+import "package:aseprite_updater/l10n/app_localizations.dart";
+import "package:aseprite_updater/main.dart";
+
+import "features/release/support/controlled_repo.dart";
+import "features/release/support/release_fixture.dart";
+import "features/release/support/release_test_app.dart";
+import "features/window/support/window_manager_fake.dart";
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets("AsepriteUpdater opens Home and renders the localized release", (tester) async {
+    final native = WindowManagerFake()..install();
+    final repo = ControlledRepo();
+    final listenersBefore = windowManager.listeners.length;
+    addTearDown(native.uninstall);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [repoProvider.overrideWithValue(repo)],
+        child: AsepriteUpdater(theme: releaseTestTheme()),
+      ),
+    );
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byType(Home), findsOneWidget);
+    expect(find.byType(Scaffold), findsNWidgets(2));
+    expect(windowManager.listeners.length, listenersBefore + 1);
+    expect(find.byType(NesHourglassLoadingIndicator), findsOneWidget);
+    expect(repo.calls, 1);
+
+    repo.result.complete(releaseFixture());
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text("Aseprite v1.3.0"), findsOneWidget);
+    expect(find.text("Update"), findsOneWidget);
+    expect(find.text("Changelog"), findsOneWidget);
+    final context = tester.element(find.byType(Home));
+    expect(AppLocalizations.of(context)!.app_title, "Aseprite Updater");
+    expect(Localizations.localeOf(context), const Locale("en"));
+    expect(tester.widget<MaterialApp>(find.byType(MaterialApp)).routerConfig, isNotNull);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    expect(windowManager.listeners.length, listenersBefore);
   });
 }

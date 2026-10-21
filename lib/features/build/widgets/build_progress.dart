@@ -42,7 +42,7 @@ class BuildProgress extends StatelessWidget {
             textAlign: .center,
           ),
           if (status == .running) ...[
-            SizedBox(height: theme.spacing.lg),
+            const SizedBox(height: 42),
             if (phase == .cloning)
               const BuildOperationProgress()
             else

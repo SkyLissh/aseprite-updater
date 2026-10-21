@@ -31,7 +31,9 @@ void main() async {
 }
 
 class AsepriteUpdater extends HookWidget {
-  const AsepriteUpdater({super.key});
+  final ThemeData? theme;
+
+  const AsepriteUpdater({this.theme, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +44,7 @@ class AsepriteUpdater extends HookWidget {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       title: "Flutter Demo",
       debugShowCheckedModeBanner: false,
-      theme: updaterTheme(),
+      theme: theme ?? updaterTheme(),
       routerConfig: router.config(),
     );
   }

@@ -50,7 +50,7 @@ void main() {
     }
   });
 
-  test("registration makes all subsequent submodule progress indeterminate", () {
+  test("submodule steps remain indeterminate after registration", () {
     parser.parse("Cloning into '/tmp/aseprite'...", isStderr: true);
     final registration = parser.parse(
       "Submodule 'foo' (https://example.com/foo) registered for path 'foo'",
@@ -62,13 +62,31 @@ void main() {
     for (final line in [
       "Cloning into '/tmp/aseprite/foo'...",
       "Receiving objects: 80% (4/5)",
-      "Resolving deltas: 100% (5/5), done.",
+      "Resolving deltas: 20% (1/5)",
       "Updating files: 100% (5/5), done.",
+      "Cloning into '/tmp/aseprite/bar'...",
+      "Receiving objects: 3% (3/100)",
     ]) {
       final event = parser.parse(line, isStderr: true)!;
       expect(event.operation, BuildOperation.downloadingSubmodules);
       expect(event.value, isNull);
     }
+  });
+
+  test("submodules stay indeterminate and ignore stdout and diagnostics", () {
+    parser.parse("Cloning into '/tmp/aseprite'...", isStderr: true);
+    parser.parse("Cloning into '/tmp/aseprite/foo'...", isStderr: true);
+
+    for (final percentage in ["unknown", "-1%", "101%", "NaN%", "1.5%", "20oops%", ""]) {
+      final event = parser.parse("Receiving objects: $percentage (1/2)", isStderr: true)!;
+      expect(event.operation, BuildOperation.downloadingSubmodules);
+      expect(event.value, isNull, reason: percentage);
+    }
+
+    expect(parser.parse("Receiving objects: 50% (1/2)", isStderr: false), isNull);
+    expect(parser.parse("remote: Receiving objects: 50% (1/2)", isStderr: true), isNull);
+    expect(parser.parse("warning: diagnostic", isStderr: true), isNull);
+    expect(parser.parse("Receiving objects: 50% (1/2)", isStderr: true)!.value, isNull);
   });
 
   test("a subsequent clone header detects submodules without registration", () {
@@ -77,6 +95,7 @@ void main() {
       parser.parse("Cloning into '/tmp/aseprite/foo'...", isStderr: true)!.operation,
       BuildOperation.downloadingSubmodules,
     );
+    expect(parser.parse("Receiving objects: 50% (1/2)", isStderr: true)!.value, isNull);
     expect(GitProgressParser().parse("Receiving objects: 50% (1/2)", isStderr: true)!.value, .5);
   });
 

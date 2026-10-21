@@ -51,8 +51,8 @@ already. Each percentage belongs to the named operation, not the entire build.
   unknown progress. The pixel-row widget repeatedly fills/resets; it is not an
   indeterminate mode of the same bordered bar. A matching custom bordered
   animation would be a separate design decision. Widget tests verify measured
-  progress, indeterminate workspace/submodule progress, bounded width, and no
-  animation in terminal states. Workspace directory creation remains unchanged.
+  progress, indeterminate workspace/submodule progress, bounded width,
+  and no animation in terminal states. Workspace directory creation remains unchanged.
 
 - [x] **Translate Git progress into operation updates.** Retained the Git
   CLI, arguments, concurrent pipe draining, UTF-8 decoder and LineSplitter.
@@ -64,8 +64,10 @@ already. Each percentage belongs to the named operation, not the entire build.
   work is complete. Change the named operation when appropriate instead of
   treating every Git percentage as overall clone progress. Unknown or unparsed
   progress falls back to an animated indicator without failing the operation.
-  Ordinary diagnostics preserve the current progress. Submodule progress stays
-  indeterminate for the rest of the clone. A network Aseprite clone was not run.
+  Ordinary diagnostics preserve the current progress. Submodule progress remains
+  indeterminate for the rest of the clone; the percentage experiment was rolled
+  back, and tests now reflect the retained behavior. A network Aseprite clone was
+  not run.
   Source: [SourceService](../lib/features/build/services/source_service.dart).
 
 - [ ] **Separate dependency downloads from installation.** Use byte progress
@@ -136,11 +138,14 @@ fix. Widget rebuilds also do not imply a full-screen repaint for every event.
   Sources: [BuildController](../lib/features/build/providers/build_controller.dart)
   and [Home](../lib/core/screens/home.dart).
 
-- [ ] **Preserve the window child hierarchy.** WindowShell currently returns the
-  child directly when maximized and wraps it otherwise, remounting descendants.
-  Keep the same container and child structure; conditionally hide its border
-  instead. Verify maximize/restore preserves descendant state and the active
-  progress display without restarting the operation or remounting its subtree.
+- [x] **Preserve the window child hierarchy.** WindowShell retains its container
+  and outer Scaffold, hiding the border with transparency and removing padding
+  when maximized. It owns the caption, controls and the single useWindow call;
+  Home retains a nested content Scaffold without a window subscription. Tests
+  verify normal/initially-maximized styling, native button forwarding, one
+  listener with disposal cleanup, and child state/element preservation across
+  maximize/restore. Home tests also verify the active build display remains
+  mounted and the selected build is not started again.
   Source: [WindowShell](../lib/features/window/widgets/window_shell.dart).
 
 - [x] **Localize touched build UI text.** All phase, operation and terminal
@@ -164,15 +169,40 @@ fix. Widget rebuilds also do not imply a full-screen repaint for every event.
   maximize/restore in the running app. Compare frame timing and memory in profile
   mode; distinguish measured improvements from static-code expectations.
 - [x] Run relevant analysis/tests and record their scope and results.
-  Verified on 2026-10-19: all 26 focused build tests pass; scoped analysis of
-  `lib/features/build` and `test/features/build` reports no issues. Formatting,
-  full build_runner generation, localization generation and `git diff --check`
-  pass. Whole-project tests have 27 passing tests and the existing missing-MyApp
-  smoke-test failure. Whole-project analysis retains the baseline 22 findings:
-  that error and 21 existing lint notices. No unrelated files were changed.
-  Manual integration used a real recursive local Git clone through SourceService;
-  network Aseprite cloning, desktop visual inspection, maximize/restore, frame
-  timing and memory profiling were not performed.
+  Verified on 2026-10-19: `flutter test --coverage` passes all 58 tests, including
+  27 focused build tests. The obsolete MyApp test and leftover percentage
+  expectations no longer block the suite. Whole-project analysis has no errors
+  or warnings; 13 existing double-quote lint notices remain in generated
+  `release.g.dart`. Formatting and `git diff --check` pass. Coverage is written
+  to `coverage/lcov.info`; recorded non-generated Dart lines, excluding generated
+  localization, total 356/447 (79.6%). No coverage threshold is imposed.
+- [x] **Cover the real app and Home flow.** The smoke test mounts
+  AsepriteUpdater through its real router, checks localized release content and
+  listener cleanup. Home tests verify selected-tag forwarding, release-to-build
+  switching, and successful/failed terminal results. An optional theme argument
+  keeps app-root tests independent of font downloads; the normal theme default
+  is unchanged. Sources: [smoke test](../test/widget_test.dart) and
+  [Home tests](../test/home_test.dart).
+- [x] **Cover releases.** Unit tests exercise JSON mapping, required-field/date
+  validation, latest-release HTTP responses/errors and provider states. Widget
+  tests exercise loading/error/data views, Update callbacks, changelog dialogs,
+  Markdown rendering, allowed HTTP/HTTPS links and rejected link targets. Tests
+  inject Dio through an optional constructor argument and use an in-memory
+  adapter; production GitHub defaults are unchanged. Sources:
+  [release tests](../test/features/release/).
+- [x] **Cover window components without opening a native window.** Method-channel
+  fakes verify initial state, maximize/unmaximize/minimize events, forwarded
+  actions, button callbacks, shell styling and listener disposal. A stateful
+  child and active build display stay mounted across simulated maximize/restore
+  events. This does not establish native desktop behavior or frame timing.
+  Sources: [window tests](../test/features/window/).
+
+Tests use controlled responses rather than live HTTP, URL launching or native
+window operations. The earlier local recursive Git clone remains manual
+integration evidence; this suite replays captured output and tests source
+validation, not Process.start, actual pipe draining or Git exit failures. Native
+startup, Linux environment-path selection, live cloning, desktop visual checks,
+frame timing and memory profiling remain outside this unit/widget testing task.
 
 ## Deferred findings and unfinished work
 
@@ -195,8 +225,9 @@ These are retained for visibility, not included in the current build/window work
 - [ ] **Repeat builds/update flow:** cloning rejects an existing destination;
   incremental updates and recovery of incomplete checkouts remain future work.
   Source: [SourceService](../lib/features/build/services/source_service.dart).
-- [ ] **Obsolete smoke test:** replace the missing-MyApp counter-template test
-  when explicitly taken up. Source: [widget test](../test/widget_test.dart).
+- [x] **Obsolete smoke test:** replaced the missing-MyApp counter-template test
+  with a real AsepriteUpdater smoke test. Source:
+  [widget test](../test/widget_test.dart).
 - [ ] **Minimized state:** the window hook sets isMinimized on minimization but
   does not reset it on restore. Lower priority; currently unused by visible UI.
   Source: [useWindow](../lib/features/window/hooks/use_window.dart).
