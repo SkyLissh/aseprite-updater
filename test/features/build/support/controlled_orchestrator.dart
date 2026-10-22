@@ -8,7 +8,12 @@ class ControlledOrchestrator extends OrchestratorService {
   final streams = <StreamController<BuildEvent>>[];
   final tags = <String>[];
 
-  new() : super(PathsService(Directory.systemTemp), SourceService(Directory.systemTemp));
+  new()
+    : super(
+        PathsService(Directory.systemTemp),
+        SourceService(Directory.systemTemp),
+        SkiaService(Directory.systemTemp, releaseTag: "test-skia", assetName: "skia.zip"),
+      );
 
   @override
   Stream<BuildEvent> run({required String tag}) {

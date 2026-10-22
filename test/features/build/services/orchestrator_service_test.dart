@@ -20,7 +20,11 @@ void main() {
       await releaseClone.future;
     });
     final events = <BuildEvent>[];
-    final done = OrchestratorService(paths, source).run(tag: "v1").forEach(events.add);
+    final done = OrchestratorService(
+      paths,
+      source,
+      _ControlledSkia(paths.skia),
+    ).run(tag: "v1").forEach(events.add);
     while (events.length < 2) {
       await Future<void>.delayed(Duration.zero);
     }
@@ -36,6 +40,7 @@ void main() {
     expect(events.whereType<StepChanged>().map((event) => event.step), [
       const BuildStep.preparing(),
       const BuildStep.cloning(),
+      const BuildStep.downloadingSkia(receivedBytes: 0),
       const BuildStep.deploying(),
     ]);
     expect(events.last, isA<BuildCompleted>());
@@ -52,6 +57,7 @@ void main() {
       OrchestratorService(
         PathsService(Directory(blocker.path)),
         source,
+        _ControlledSkia(temporary),
       ).run(tag: "v1").forEach(events.add),
       throwsA(isA<FileSystemException>()),
     );
@@ -73,12 +79,61 @@ void main() {
     final events = <BuildEvent>[];
 
     await expectLater(
-      OrchestratorService(paths, source).run(tag: "v1").forEach(events.add),
+      OrchestratorService(
+        paths,
+        source,
+        _ControlledSkia(paths.skia),
+      ).run(tag: "v1").forEach(events.add),
       throwsStateError,
     );
     expect(events, hasLength(2));
     expect(events.whereType<BuildCompleted>(), isEmpty);
     expect((events.last as StepChanged).step, const BuildStep.cloning());
+  });
+
+  test("forwards Skia progress and waits for the download before completing", () async {
+    final paths = PathsService(Directory("${temporary.path}/workspace"));
+    final source = _ControlledSource(paths.checkout, (_) async {});
+    final progress = StreamController<DownloadProgress>();
+    addTearDown(progress.close);
+    final events = <BuildEvent>[];
+    final done = OrchestratorService(
+      paths,
+      source,
+      _ControlledSkia(paths.skia, progress: progress.stream),
+    ).run(tag: "v1").forEach(events.add);
+    progress.add(const DownloadProgress(receivedBytes: 50, totalBytes: 100));
+    while (events.length < 4) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(
+      (events.last as StepChanged).step,
+      const BuildStep.downloadingSkia(receivedBytes: 50, totalBytes: 100),
+    );
+    expect(events.whereType<BuildCompleted>(), isEmpty);
+
+    await progress.close();
+    await done;
+
+    expect(events.last, isA<BuildCompleted>());
+  });
+
+  test("a Skia failure propagates without deployment or completion", () async {
+    final paths = PathsService(Directory("${temporary.path}/workspace"));
+    final source = _ControlledSource(paths.checkout, (_) async {});
+    final events = <BuildEvent>[];
+
+    await expectLater(
+      OrchestratorService(
+        paths,
+        source,
+        _ControlledSkia(paths.skia, progress: Stream.error(StateError("download failed"))),
+      ).run(tag: "v1").forEach(events.add),
+      throwsStateError,
+    );
+    expect(events.whereType<BuildCompleted>(), isEmpty);
+    expect((events.last as StepChanged).step, const BuildStep.downloadingSkia(receivedBytes: 0));
   });
 }
 
@@ -86,4 +141,14 @@ class _ControlledSource(super.checkout, final Future<void> Function(String) acti
     extends SourceService {
   @override
   Future<void> clone({required String tag}) => action(tag);
+}
+
+class _ControlledSkia(
+  super.directory, {
+  final Stream<DownloadProgress> progress = const Stream.empty(),
+}) extends SkiaService {
+  this : super(releaseTag: "test-skia", assetName: "skia.zip");
+
+  @override
+  Stream<DownloadProgress> download() => progress;
 }

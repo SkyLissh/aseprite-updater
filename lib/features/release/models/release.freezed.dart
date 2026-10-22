@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Release {
 
-@JsonKey(name: "tag_name") String get tagName; String get name; String get body;@JsonKey(name: "published_at") DateTime get publishedAt; bool get draft; bool get prerelease;
+@JsonKey(name: "tag_name") String get tagName; String get name; String get body;@JsonKey(name: "published_at") DateTime get publishedAt; bool get draft; bool get prerelease; List<ReleaseAsset> get assets;
 /// Create a copy of Release
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $ReleaseCopyWith<Release> get copyWith => _$ReleaseCopyWithImpl<Release>(this as
 @override
 bool operator ==(Object other) {
   final _this = this as Release;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Release&&(identical(other.tagName, _this.tagName) || other.tagName == _this.tagName)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.body, _this.body) || other.body == _this.body)&&(identical(other.publishedAt, _this.publishedAt) || other.publishedAt == _this.publishedAt)&&(identical(other.draft, _this.draft) || other.draft == _this.draft)&&(identical(other.prerelease, _this.prerelease) || other.prerelease == _this.prerelease));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Release&&(identical(other.tagName, _this.tagName) || other.tagName == _this.tagName)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.body, _this.body) || other.body == _this.body)&&(identical(other.publishedAt, _this.publishedAt) || other.publishedAt == _this.publishedAt)&&(identical(other.draft, _this.draft) || other.draft == _this.draft)&&(identical(other.prerelease, _this.prerelease) || other.prerelease == _this.prerelease)&&const DeepCollectionEquality().equals(other.assets, _this.assets));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as Release;
-  return Object.hash(runtimeType,_this.tagName,_this.name,_this.body,_this.publishedAt,_this.draft,_this.prerelease);
+  return Object.hash(runtimeType,_this.tagName,_this.name,_this.body,_this.publishedAt,_this.draft,_this.prerelease,const DeepCollectionEquality().hash(_this.assets));
 }
 
 @override
 String toString() {
   final _this = this as Release;
-  return 'Release(tagName: ${_this.tagName}, name: ${_this.name}, body: ${_this.body}, publishedAt: ${_this.publishedAt}, draft: ${_this.draft}, prerelease: ${_this.prerelease})';
+  return 'Release(tagName: ${_this.tagName}, name: ${_this.name}, body: ${_this.body}, publishedAt: ${_this.publishedAt}, draft: ${_this.draft}, prerelease: ${_this.prerelease}, assets: ${_this.assets})';
 }
 
 
@@ -54,7 +54,7 @@ abstract mixin class $ReleaseCopyWith<$Res>  {
   factory $ReleaseCopyWith(Release value, $Res Function(Release) _then) = _$ReleaseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: "tag_name") String tagName, String name, String body,@JsonKey(name: "published_at") DateTime publishedAt, bool draft, bool prerelease
+@JsonKey(name: "tag_name") String tagName, String name, String body,@JsonKey(name: "published_at") DateTime publishedAt, bool draft, bool prerelease, List<ReleaseAsset> assets
 });
 
 
@@ -71,7 +71,7 @@ class _$ReleaseCopyWithImpl<$Res>
 
 /// Create a copy of Release
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? tagName = null,Object? name = null,Object? body = null,Object? publishedAt = null,Object? draft = null,Object? prerelease = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? tagName = null,Object? name = null,Object? body = null,Object? publishedAt = null,Object? draft = null,Object? prerelease = null,Object? assets = null,}) {
   return _then(Release(
 tagName: null == tagName ? _self.tagName : tagName // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -79,7 +79,8 @@ as String,body: null == body ? _self.body : body // ignore: cast_nullable_to_non
 as String,publishedAt: null == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
 as bool,prerelease: null == prerelease ? _self.prerelease : prerelease // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,assets: null == assets ? _self.assets : assets // ignore: cast_nullable_to_non_nullable
+as List<ReleaseAsset>,
   ));
 }
 
@@ -164,10 +165,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: "tag_name")  String tagName,  String name,  String body, @JsonKey(name: "published_at")  DateTime publishedAt,  bool draft,  bool prerelease)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: "tag_name")  String tagName,  String name,  String body, @JsonKey(name: "published_at")  DateTime publishedAt,  bool draft,  bool prerelease,  List<ReleaseAsset> assets)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Release() when $default != null:
-return $default(_that.tagName,_that.name,_that.body,_that.publishedAt,_that.draft,_that.prerelease);case _:
+return $default(_that.tagName,_that.name,_that.body,_that.publishedAt,_that.draft,_that.prerelease,_that.assets);case _:
   return orElse();
 
 }
@@ -185,10 +186,10 @@ return $default(_that.tagName,_that.name,_that.body,_that.publishedAt,_that.draf
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: "tag_name")  String tagName,  String name,  String body, @JsonKey(name: "published_at")  DateTime publishedAt,  bool draft,  bool prerelease)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: "tag_name")  String tagName,  String name,  String body, @JsonKey(name: "published_at")  DateTime publishedAt,  bool draft,  bool prerelease,  List<ReleaseAsset> assets)  $default,) {final _that = this;
 switch (_that) {
 case _Release():
-return $default(_that.tagName,_that.name,_that.body,_that.publishedAt,_that.draft,_that.prerelease);case _:
+return $default(_that.tagName,_that.name,_that.body,_that.publishedAt,_that.draft,_that.prerelease,_that.assets);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -205,10 +206,10 @@ return $default(_that.tagName,_that.name,_that.body,_that.publishedAt,_that.draf
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: "tag_name")  String tagName,  String name,  String body, @JsonKey(name: "published_at")  DateTime publishedAt,  bool draft,  bool prerelease)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: "tag_name")  String tagName,  String name,  String body, @JsonKey(name: "published_at")  DateTime publishedAt,  bool draft,  bool prerelease,  List<ReleaseAsset> assets)?  $default,) {final _that = this;
 switch (_that) {
 case _Release() when $default != null:
-return $default(_that.tagName,_that.name,_that.body,_that.publishedAt,_that.draft,_that.prerelease);case _:
+return $default(_that.tagName,_that.name,_that.body,_that.publishedAt,_that.draft,_that.prerelease,_that.assets);case _:
   return null;
 
 }
@@ -217,10 +218,10 @@ return $default(_that.tagName,_that.name,_that.body,_that.publishedAt,_that.draf
 }
 
 /// @nodoc
-@JsonSerializable()
 
+@JsonSerializable(explicitToJson: true)
 class _Release implements Release {
-  const _Release({@JsonKey(name: "tag_name") required this.tagName, required this.name, required this.body, @JsonKey(name: "published_at") required this.publishedAt, required this.draft, required this.prerelease});
+  const _Release({@JsonKey(name: "tag_name") required this.tagName, required this.name, required this.body, @JsonKey(name: "published_at") required this.publishedAt, required this.draft, required this.prerelease,  List<ReleaseAsset> assets = const <ReleaseAsset>[]}): _assets = assets;
   factory _Release.fromJson(Map<String, dynamic> json) => _$ReleaseFromJson(json);
 
 @override@JsonKey(name: "tag_name") final  String tagName;
@@ -229,6 +230,13 @@ class _Release implements Release {
 @override@JsonKey(name: "published_at") final  DateTime publishedAt;
 @override final  bool draft;
 @override final  bool prerelease;
+ final  List<ReleaseAsset> _assets;
+@override@JsonKey() List<ReleaseAsset> get assets {
+  if (_assets is EqualUnmodifiableListView) return _assets;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_assets);
+}
+
 
 /// Create a copy of Release
 /// with the given fields replaced by the non-null parameter values.
@@ -243,18 +251,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Release&&(identical(other.tagName, tagName) || other.tagName == tagName)&&(identical(other.name, name) || other.name == name)&&(identical(other.body, body) || other.body == body)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.prerelease, prerelease) || other.prerelease == prerelease));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Release&&(identical(other.tagName, tagName) || other.tagName == tagName)&&(identical(other.name, name) || other.name == name)&&(identical(other.body, body) || other.body == body)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.prerelease, prerelease) || other.prerelease == prerelease)&&const DeepCollectionEquality().equals(other.assets, _assets));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,tagName,name,body,publishedAt,draft,prerelease);
+    return Object.hash(runtimeType,tagName,name,body,publishedAt,draft,prerelease,const DeepCollectionEquality().hash(_assets));
 }
 
 @override
 String toString() {
-    return 'Release(tagName: $tagName, name: $name, body: $body, publishedAt: $publishedAt, draft: $draft, prerelease: $prerelease)';
+    return 'Release(tagName: $tagName, name: $name, body: $body, publishedAt: $publishedAt, draft: $draft, prerelease: $prerelease, assets: $assets)';
 }
 
 
@@ -265,7 +273,7 @@ abstract mixin class _$ReleaseCopyWith<$Res> implements $ReleaseCopyWith<$Res> {
   factory _$ReleaseCopyWith(_Release value, $Res Function(_Release) _then) = __$ReleaseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: "tag_name") String tagName, String name, String body,@JsonKey(name: "published_at") DateTime publishedAt, bool draft, bool prerelease
+@JsonKey(name: "tag_name") String tagName, String name, String body,@JsonKey(name: "published_at") DateTime publishedAt, bool draft, bool prerelease, List<ReleaseAsset> assets
 });
 
 
@@ -282,7 +290,7 @@ class __$ReleaseCopyWithImpl<$Res>
 
 /// Create a copy of Release
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? tagName = null,Object? name = null,Object? body = null,Object? publishedAt = null,Object? draft = null,Object? prerelease = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? tagName = null,Object? name = null,Object? body = null,Object? publishedAt = null,Object? draft = null,Object? prerelease = null,Object? assets = null,}) {
   return _then(_Release(
 tagName: null == tagName ? _self.tagName : tagName // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -290,7 +298,8 @@ as String,body: null == body ? _self.body : body // ignore: cast_nullable_to_non
 as String,publishedAt: null == publishedAt ? _self.publishedAt : publishedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
 as bool,prerelease: null == prerelease ? _self.prerelease : prerelease // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,assets: null == assets ? _self._assets : assets // ignore: cast_nullable_to_non_nullable
+as List<ReleaseAsset>,
   ));
 }
 

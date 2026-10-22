@@ -13,7 +13,12 @@ part of 'orchestrator.dart';
 final orchestratorProvider = OrchestratorProvider._();
 
 final class OrchestratorProvider
-    extends $FunctionalProvider<OrchestratorService, OrchestratorService, OrchestratorService>
+    extends
+        $FunctionalProvider<
+          OrchestratorService,
+          OrchestratorService,
+          OrchestratorService
+        >
     with $Provider<OrchestratorService> {
   OrchestratorProvider._()
     : super(
@@ -31,8 +36,9 @@ final class OrchestratorProvider
 
   @$internal
   @override
-  $ProviderElement<OrchestratorService> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
+  $ProviderElement<OrchestratorService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
 
   @override
   OrchestratorService create(Ref ref) {
@@ -48,4 +54,4 @@ final class OrchestratorProvider
   }
 }
 
-String _$orchestratorHash() => r'5e96a3bed298937be5b5caa450f13365e5b41f0c';
+String _$orchestratorHash() => r'64f6a11fb572666adda6b9016075fed745f625ee';

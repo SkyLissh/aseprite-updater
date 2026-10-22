@@ -13,6 +13,11 @@ _Release _$ReleaseFromJson(Map<String, dynamic> json) => _Release(
   publishedAt: DateTime.parse(json['published_at'] as String),
   draft: json['draft'] as bool,
   prerelease: json['prerelease'] as bool,
+  assets:
+      (json['assets'] as List<dynamic>?)
+          ?.map((e) => ReleaseAsset.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const <ReleaseAsset>[],
 );
 
 Map<String, dynamic> _$ReleaseToJson(_Release instance) => <String, dynamic>{
@@ -22,4 +27,5 @@ Map<String, dynamic> _$ReleaseToJson(_Release instance) => <String, dynamic>{
   'published_at': instance.publishedAt.toIso8601String(),
   'draft': instance.draft,
   'prerelease': instance.prerelease,
+  'assets': instance.assets.map((e) => e.toJson()).toList(),
 };

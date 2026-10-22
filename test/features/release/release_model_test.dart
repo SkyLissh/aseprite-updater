@@ -28,4 +28,55 @@ void main() {
       throwsFormatException,
     );
   });
+
+  test("maps release assets into typed names and download URLs", () {
+    final release = Release.fromJson({
+      ...releaseJson(),
+      "assets": [
+        {
+          "name": "Skia-Linux-Release-x64.zip",
+          "browser_download_url": "https://example.invalid/skia.zip",
+        },
+      ],
+    });
+
+    expect(release.assets, [
+      const ReleaseAsset(
+        name: "Skia-Linux-Release-x64.zip",
+        browserDownloadUrl: "https://example.invalid/skia.zip",
+      ),
+    ]);
+    expect(Release.fromJson(release.toJson()), release);
+  });
+
+  test("defaults to no assets for existing release responses and constructors", () {
+    expect(Release.fromJson(releaseJson()).assets, isEmpty);
+    expect(
+      Release(
+        tagName: "v1",
+        name: "Aseprite",
+        body: "",
+        publishedAt: DateTime.utc(2025),
+        draft: false,
+        prerelease: false,
+      ).assets,
+      isEmpty,
+    );
+  });
+
+  test("rejects assets missing a name or download URL", () {
+    for (final field in ["name", "browser_download_url"]) {
+      final asset = {"name": "skia.zip", "browser_download_url": "https://example.invalid/skia.zip"}
+        ..remove(field);
+
+      expect(
+        () => Release.fromJson({
+          ...releaseJson(),
+          "assets": [asset],
+        }),
+        throwsA(isA<TypeError>()),
+        reason: field,
+      );
+    }
+  });
 }

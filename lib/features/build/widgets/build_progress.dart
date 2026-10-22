@@ -18,6 +18,7 @@ class BuildProgress extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l10n = context.l10n;
+
     final heading = ref.watch(
       buildControllerProvider.select(
         (state) => switch (state.step) {

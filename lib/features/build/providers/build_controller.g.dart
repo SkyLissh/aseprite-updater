@@ -41,7 +41,7 @@ final class BuildControllerProvider
   }
 }
 
-String _$buildControllerHash() => r'39e09bc7e39397de6d856bdd56167fa430ab262e';
+String _$buildControllerHash() => r'cf3e43b2ea472091139d3791218a022764a90886';
 
 abstract class _$BuildController extends $Notifier<BuildState> {
   BuildState build();

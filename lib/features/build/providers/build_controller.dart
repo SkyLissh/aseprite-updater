@@ -67,17 +67,12 @@ class BuildController extends _$BuildController {
   }
 
   void _queueStep(BuildStep step) {
-    final isTransition = switch ((state.step, step)) {
-      (Preparing(), Preparing()) ||
-      (Cloning(), Cloning()) ||
-      (DownloadingSkia(), DownloadingSkia()) ||
-      (Configuring(), Configuring()) ||
-      (Compiling(), Compiling()) ||
-      (Deploying(), Deploying()) => false,
-      _ => true,
+    final canCoalesce = switch ((state.step, step)) {
+      (DownloadingSkia(), DownloadingSkia()) || (Compiling(), Compiling()) => true,
+      _ => false,
     };
 
-    if (isTransition) {
+    if (!canCoalesce) {
       _cancelProgress();
 
       state = state.copyWith(step: step);
