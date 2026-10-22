@@ -27,23 +27,23 @@ void main() {
 
   BuildState current() => container.read(buildControllerProvider);
   void step(BuildStep value) => orchestrator.add(StepChanged(value));
-  void cloneProgress(double? value, {GitOperation operation = .downloadingSource}) =>
-      step(BuildStep.cloning(operation: operation, progress: value));
+  void downloadProgress(int receivedBytes, {int? totalBytes = 100}) =>
+      step(BuildStep.downloadingSkia(receivedBytes: receivedBytes, totalBytes: totalBytes));
 
   testWidgets("equal snapshots do not publish; latest value coalesces at 100ms", (tester) async {
     unawaited(controller.run(tag: "v1"));
-    cloneProgress(.1);
+    downloadProgress(10);
     await tester.pump();
     final count = states.length;
-    cloneProgress(.1);
+    downloadProgress(10);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(states, hasLength(count));
 
-    cloneProgress(.2);
+    downloadProgress(20);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 60));
-    cloneProgress(.3);
+    downloadProgress(30);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 39));
     expect(current().step.fraction, .1);
@@ -58,11 +58,11 @@ void main() {
     tester,
   ) async {
     unawaited(controller.run(tag: "v1"));
-    cloneProgress(.1);
+    downloadProgress(10);
     await tester.pump();
     final count = states.length;
-    cloneProgress(.2);
-    cloneProgress(.1);
+    downloadProgress(20);
+    downloadProgress(10);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(states, hasLength(count));
@@ -70,20 +70,18 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets("operation and step transitions are atomic and cancel stale snapshots", (
-    tester,
-  ) async {
+  testWidgets("step transitions are immediate and cancel stale snapshots", (tester) async {
     unawaited(controller.run(tag: "v1"));
-    cloneProgress(.1);
-    cloneProgress(.8);
+    downloadProgress(10);
+    downloadProgress(80);
     await tester.pump();
-    cloneProgress(.2, operation: .resolvingSource);
+    step(const BuildStep.cloning());
     await tester.pump();
-    expect(current().step, const BuildStep.cloning(operation: .resolvingSource, progress: .2));
+    expect(current().step, const BuildStep.cloning());
     await tester.pump(const Duration(milliseconds: 100));
-    expect(current().step.fraction, .2);
+    expect(current().step.fraction, isNull);
 
-    cloneProgress(.9, operation: .resolvingSource);
+    step(const BuildStep.cloning());
     step(const BuildStep.downloadingSkia(receivedBytes: 10, totalBytes: 100));
     await tester.pump();
     expect(current().step, const BuildStep.downloadingSkia(receivedBytes: 10, totalBytes: 100));
@@ -123,16 +121,16 @@ void main() {
     tester,
   ) async {
     final run = controller.run(tag: "v1");
-    cloneProgress(1);
+    downloadProgress(100);
     await tester.pump();
     expect(current().status, BuildStatus.running);
-    cloneProgress(.1, operation: .resolvingSource);
-    cloneProgress(.9, operation: .resolvingSource);
+    step(const BuildStep.compiling(completedTasks: 1, totalTasks: 10));
+    step(const BuildStep.compiling(completedTasks: 9, totalTasks: 10));
     orchestrator.add(const BuildCompleted());
     await tester.pump();
     await tester.runAsync(() => run);
     expect(current().status, BuildStatus.completed);
-    expect(current().step, const BuildStep.cloning(operation: .resolvingSource, progress: .1));
+    expect(current().step, const BuildStep.compiling(completedTasks: 1, totalTasks: 10));
     await tester.pump(const Duration(milliseconds: 100));
     expect(current().step.fraction, .1);
   });
@@ -143,8 +141,8 @@ void main() {
     final run = controller.run(tag: "v1");
     await controller.run(tag: "ignored");
     expect(orchestrator.tags, ["v1"]);
-    cloneProgress(1);
-    cloneProgress(.5);
+    downloadProgress(100);
+    downloadProgress(50);
     orchestrator.streams.last.addError(StateError("clone failed"));
     await tester.pump();
     await tester.runAsync(() => expectLater(run, completes));
@@ -179,13 +177,13 @@ void main() {
     await tester.runAsync(() => first);
     unawaited(controller.run(tag: "v2"));
     expect(current(), const BuildState(status: .running));
-    cloneProgress(.1);
-    cloneProgress(null);
+    downloadProgress(10);
+    downloadProgress(10, totalBytes: null);
     await tester.pump();
     expect(current().step.fraction, .1);
     await tester.pump(const Duration(milliseconds: 100));
     expect(current().step.fraction, isNull);
-    cloneProgress(.6);
+    downloadProgress(60);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(current().step.fraction, .6);
@@ -195,8 +193,8 @@ void main() {
 
   testWidgets("disposal cancels scheduled updates and ignores late events", (tester) async {
     final run = controller.run(tag: "v1");
-    cloneProgress(.1);
-    cloneProgress(.9);
+    downloadProgress(10);
+    downloadProgress(90);
     await tester.pump();
     final count = states.length;
     container.dispose();

@@ -44,11 +44,11 @@ void main() {
         expect(find.text("Preparing your workspace…"), findsOneWidget);
         expect(find.text("Update"), findsNothing);
 
-        orchestrator.add(
-          const StepChanged(BuildStep.cloning(operation: .downloadingSource, progress: 1)),
-        );
+        orchestrator.add(const StepChanged(BuildStep.cloning()));
         await tester.pump();
-        expect(find.byType(NesProgressBar), findsOneWidget);
+        expect(find.byType(NesProgressBar), findsNothing);
+        expect(find.byType(NesPixelRowLoadingIndicator), findsOneWidget);
+        expect(find.text("Getting source code…"), findsOneWidget);
         expect(container.read(buildControllerProvider).status, BuildStatus.running);
 
         final progressElement = tester.element(find.byType(BuildProgress));

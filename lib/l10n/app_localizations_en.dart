@@ -67,19 +67,4 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get build_deploying => 'Installing the build…';
-
-  @override
-  String get build_connecting_source => 'Connecting to the source repository…';
-
-  @override
-  String get build_downloading_source => 'Downloading source…';
-
-  @override
-  String get build_resolving_source => 'Preparing source…';
-
-  @override
-  String get build_checking_out_source => 'Writing source files…';
-
-  @override
-  String get build_downloading_submodules => 'Downloading source components…';
 }

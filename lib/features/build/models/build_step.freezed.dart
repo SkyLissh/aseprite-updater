@@ -132,11 +132,11 @@ return deploying(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  preparing,TResult Function( GitOperation operation,  double? progress)?  cloning,TResult Function( int receivedBytes,  int? totalBytes)?  downloadingSkia,TResult Function()?  configuring,TResult Function( int completedTasks,  int? totalTasks)?  compiling,TResult Function()?  deploying,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  preparing,TResult Function()?  cloning,TResult Function( int receivedBytes,  int? totalBytes)?  downloadingSkia,TResult Function()?  configuring,TResult Function( int completedTasks,  int? totalTasks)?  compiling,TResult Function()?  deploying,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case Preparing() when preparing != null:
 return preparing();case Cloning() when cloning != null:
-return cloning(_that.operation,_that.progress);case DownloadingSkia() when downloadingSkia != null:
+return cloning();case DownloadingSkia() when downloadingSkia != null:
 return downloadingSkia(_that.receivedBytes,_that.totalBytes);case Configuring() when configuring != null:
 return configuring();case Compiling() when compiling != null:
 return compiling(_that.completedTasks,_that.totalTasks);case Deploying() when deploying != null:
@@ -158,11 +158,11 @@ return deploying();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  preparing,required TResult Function( GitOperation operation,  double? progress)  cloning,required TResult Function( int receivedBytes,  int? totalBytes)  downloadingSkia,required TResult Function()  configuring,required TResult Function( int completedTasks,  int? totalTasks)  compiling,required TResult Function()  deploying,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  preparing,required TResult Function()  cloning,required TResult Function( int receivedBytes,  int? totalBytes)  downloadingSkia,required TResult Function()  configuring,required TResult Function( int completedTasks,  int? totalTasks)  compiling,required TResult Function()  deploying,}) {final _that = this;
 switch (_that) {
 case Preparing():
 return preparing();case Cloning():
-return cloning(_that.operation,_that.progress);case DownloadingSkia():
+return cloning();case DownloadingSkia():
 return downloadingSkia(_that.receivedBytes,_that.totalBytes);case Configuring():
 return configuring();case Compiling():
 return compiling(_that.completedTasks,_that.totalTasks);case Deploying():
@@ -180,11 +180,11 @@ return deploying();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  preparing,TResult? Function( GitOperation operation,  double? progress)?  cloning,TResult? Function( int receivedBytes,  int? totalBytes)?  downloadingSkia,TResult? Function()?  configuring,TResult? Function( int completedTasks,  int? totalTasks)?  compiling,TResult? Function()?  deploying,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  preparing,TResult? Function()?  cloning,TResult? Function( int receivedBytes,  int? totalBytes)?  downloadingSkia,TResult? Function()?  configuring,TResult? Function( int completedTasks,  int? totalTasks)?  compiling,TResult? Function()?  deploying,}) {final _that = this;
 switch (_that) {
 case Preparing() when preparing != null:
 return preparing();case Cloning() when cloning != null:
-return cloning(_that.operation,_that.progress);case DownloadingSkia() when downloadingSkia != null:
+return cloning();case DownloadingSkia() when downloadingSkia != null:
 return downloadingSkia(_that.receivedBytes,_that.totalBytes);case Configuring() when configuring != null:
 return configuring();case Compiling() when compiling != null:
 return compiling(_that.completedTasks,_that.totalTasks);case Deploying() when deploying != null:
@@ -232,71 +232,33 @@ String toString() {
 
 
 class Cloning extends BuildStep {
-  const Cloning({required this.operation, this.progress}): super._();
+  const Cloning(): super._();
   
 
- final  GitOperation operation;
- final  double? progress;
 
-/// Create a copy of BuildStep
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$CloningCopyWith<Cloning> get copyWith => _$CloningCopyWithImpl<Cloning>(this, _$identity);
+
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is Cloning&&(identical(other.operation, operation) || other.operation == operation)&&(identical(other.progress, progress) || other.progress == progress));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is Cloning);
 }
 
 
 @override
-int get hashCode {
-    return Object.hash(runtimeType,operation,progress);
-}
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-    return 'BuildStep.cloning(operation: $operation, progress: $progress)';
+    return 'BuildStep.cloning()';
 }
 
 
 }
 
-/// @nodoc
-abstract mixin class $CloningCopyWith<$Res> implements $BuildStepCopyWith<$Res> {
-  factory $CloningCopyWith(Cloning value, $Res Function(Cloning) _then) = _$CloningCopyWithImpl;
-@useResult
-$Res call({
- GitOperation operation, double? progress
-});
 
 
-
-
-}
-/// @nodoc
-class _$CloningCopyWithImpl<$Res>
-    implements $CloningCopyWith<$Res> {
-  _$CloningCopyWithImpl(this._self, this._then);
-
-  final Cloning _self;
-  final $Res Function(Cloning) _then;
-
-/// Create a copy of BuildStep
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? operation = null,Object? progress = freezed,}) {
-  return _then(Cloning(
-operation: null == operation ? _self.operation : operation // ignore: cast_nullable_to_non_nullable
-as GitOperation,progress: freezed == progress ? _self.progress : progress // ignore: cast_nullable_to_non_nullable
-as double?,
-  ));
-}
-
-
-}
 
 /// @nodoc
 

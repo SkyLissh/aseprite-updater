@@ -11,47 +11,40 @@ void main() {
   setUp(() async => temporary = await Directory.systemTemp.createTemp("updater-orchestrator-"));
   tearDown(() async => temporary.delete(recursive: true));
 
-  test("workspace preparation finishes before cloning; Git progress maps to build steps", () async {
+  test("cloning stays indeterminate until the source finishes", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
     final releaseClone = Completer<void>();
-    const progress = GitProgress(operation: .downloadingSource, progress: .5);
-    final source = _ControlledSource(paths.checkout, (tag) async* {
+    final source = _ControlledSource(paths.checkout, (tag) async {
       expect(tag, "v1");
       expect(await paths.out.exists(), isTrue);
       await releaseClone.future;
-      yield progress;
     });
     final events = <BuildEvent>[];
     final done = OrchestratorService(paths, source).run(tag: "v1").forEach(events.add);
-    while (!events.any((event) => event is StepChanged && event.step is Cloning)) {
+    while (events.length < 2) {
       await Future<void>.delayed(Duration.zero);
     }
-    expect(
-      events.first,
-      isA<StepChanged>().having((event) => event.step, "step", const BuildStep.preparing()),
-    );
-    expect(events, hasLength(2));
+
+    expect(events.whereType<StepChanged>().map((event) => event.step), [
+      const BuildStep.preparing(),
+      const BuildStep.cloning(),
+    ]);
+    expect(events.whereType<BuildCompleted>(), isEmpty);
+
     releaseClone.complete();
     await done;
-    expect(
-      events[2],
-      isA<StepChanged>().having(
-        (event) => event.step,
-        "step",
-        const BuildStep.cloning(operation: .downloadingSource, progress: .5),
-      ),
-    );
-    expect(
-      events[3],
-      isA<StepChanged>().having((event) => event.step, "step", const BuildStep.deploying()),
-    );
+    expect(events.whereType<StepChanged>().map((event) => event.step), [
+      const BuildStep.preparing(),
+      const BuildStep.cloning(),
+      const BuildStep.deploying(),
+    ]);
     expect(events.last, isA<BuildCompleted>());
   });
 
   test("workspace failure prevents cloning and completion", () async {
     final blocker = await File("${temporary.path}/blocked").create();
     var cloned = false;
-    final source = _ControlledSource(temporary, (_) async* {
+    final source = _ControlledSource(temporary, (_) async {
       cloned = true;
     });
     final events = <BuildEvent>[];
@@ -68,36 +61,29 @@ void main() {
   });
 
   test("source validation rejects blank tags and existing destinations", () async {
-    await expectLater(SourceService(temporary).clone(tag: "  "), emitsError(isArgumentError));
-    await expectLater(SourceService(temporary).clone(tag: "v1"), emitsError(isStateError));
+    await expectLater(SourceService(temporary).clone(tag: "  "), throwsArgumentError);
+    await expectLater(SourceService(temporary).clone(tag: "v1"), throwsStateError);
   });
 
   test("a source failure propagates without deployment or completion", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
-    final source = _ControlledSource(paths.checkout, (_) async* {
-      yield const GitProgress(operation: .downloadingSource, progress: 1);
+    final source = _ControlledSource(paths.checkout, (_) async {
       throw StateError("clone failed");
     });
     final events = <BuildEvent>[];
 
     await expectLater(
       OrchestratorService(paths, source).run(tag: "v1").forEach(events.add),
-      throwsA(isStateError),
+      throwsStateError,
     );
-    expect(events, hasLength(3));
+    expect(events, hasLength(2));
     expect(events.whereType<BuildCompleted>(), isEmpty);
-    expect(
-      (events.last as StepChanged).step,
-      const BuildStep.cloning(operation: .downloadingSource, progress: 1),
-    );
+    expect((events.last as StepChanged).step, const BuildStep.cloning());
   });
 }
 
-class _ControlledSource extends SourceService {
-  final Stream<GitProgress> Function(String) events;
-
-  new(super.checkout, this.events);
-
+class _ControlledSource(super.checkout, final Future<void> Function(String) action)
+    extends SourceService {
   @override
-  Stream<GitProgress> clone({required String tag}) => events(tag);
+  Future<void> clone({required String tag}) => action(tag);
 }

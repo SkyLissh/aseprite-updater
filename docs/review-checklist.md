@@ -19,7 +19,7 @@ output should no longer be displayed as a live log in the app.
 This direction replaces the earlier live-tail, lazy-list, NES scrollbar,
 auto-scroll, and frozen-reading tasks. Those are no longer requirements for the
 current experience. File logging is a separate follow-up; this implementation
-drains and discards diagnostic output after parsing progress.
+drains and discards Git output without parsing progress.
 
 - [x] **Replace the visible log panel with operation progress.** Removed
   BuildLogs and its scroll/follow effects. The build screen shows localized
@@ -37,8 +37,7 @@ already. Each percentage belongs to the named operation, not the entire build.
 
 | Operation | What can be measured | Suggested presentation |
 | --- | --- | --- |
-| Git download | Git's reported transfer progress | "Downloading source — 64%" |
-| Git preparation and submodules | Separate operations with their own progress, where available | Friendly named substeps; animated indicator when the total is unknown |
+| Git clone, including checkout and submodules | No percentages or sub-operation progress | "Getting source code…" with the existing animated indicator |
 | Dependency downloads, including precompiled Skia | Received bytes / total bytes, when a reliable total is available | "Downloading required components — 42%" |
 | Dependency installation | Progress exposed by the chosen installer; otherwise completed components | Percentage when supported; otherwise "Installing component 2 of 4" with an animated indicator |
 | CMake configuration | No universal percentage assumed | "Preparing the build…" with an animated indicator |
@@ -51,23 +50,15 @@ already. Each percentage belongs to the named operation, not the entire build.
   unknown progress. The pixel-row widget repeatedly fills/resets; it is not an
   indeterminate mode of the same bordered bar. A matching custom bordered
   animation would be a separate design decision. Widget tests verify measured
-  progress, indeterminate workspace/submodule progress, bounded width,
+  download progress, indeterminate workspace/cloning progress, bounded width,
   and no animation in terminal states. Workspace directory creation remains unchanged.
 
-- [x] **Translate Git progress into operation updates.** Retained the Git
-  CLI, arguments, concurrent pipe draining, UTF-8 decoder and LineSplitter.
-  `LC_ALL=C` makes parsing predictable. Parser tests cover stderr identity,
-  malformed percentages, fragmented/carriage-return updates, remote diagnostics,
-  and submodules. A real recursive clone through SourceService against a temporary
-  local Git fixture succeeded; captured progress excerpts are replayed in tests.
-  Receiving objects reaching 100% does not mean checkout or recursive submodule
-  work is complete. Change the named operation when appropriate instead of
-  treating every Git percentage as overall clone progress. Unknown or unparsed
-  progress falls back to an animated indicator without failing the operation.
-  Ordinary diagnostics preserve the current progress. Submodule progress remains
-  indeterminate for the rest of the clone; the percentage experiment was rolled
-  back, and tests now reflect the retained behavior. A network Aseprite clone was
-  not run.
+- [x] **Keep Git cloning indeterminate.** The entire clone uses one Cloning
+  step and the existing animated loader. SourceService returns Future<void>;
+  the orchestrator waits for it before moving on. Removed Git progress models,
+  parsing, percentage fixtures, sub-operation labels and the forced-progress
+  flag. Stdout and stderr are still drained concurrently, and nonzero exit
+  codes still fail the run. No progress stream is exposed by the source service.
   Source: [SourceService](../lib/features/build/services/source_service.dart).
 
 - [ ] **Separate dependency downloads from installation.** Use byte progress
@@ -91,8 +82,8 @@ already. Each percentage belongs to the named operation, not the entire build.
 ## Build state and diagnostic output
 
 - [x] **Keep focused subscriptions.** Home selects run status. BuildProgress
-  selects the localized step heading; BuildOperationProgress selects the typed
-  step snapshot. Measurement updates preserve the heading and progress subtree.
+  selects the localized step heading; BuildOperationProgress selects the derived
+  fraction. Measurement updates preserve the heading and progress subtree.
   Equal snapshots do not publish; widget tests send 1,000 equal snapshots and
   verify the existing progress bar widget is retained.
   Sources: [Home](../lib/core/screens/home.dart) and
@@ -100,16 +91,16 @@ already. Each percentage belongs to the named operation, not the entire build.
 
 - [x] **Remove growing output snapshots from UI state.** BuildState holds a
   sealed BuildStep snapshot, run status and errorMessage. Step variants carry
-  Git operations, byte counts or task counts; no separate phase enum is stored.
-  SourceService emits only GitProgress, and the orchestrator maps it to
-  StepChanged. Raw process output is parsed and discarded inside SourceService;
-  there are no diagnostic output events.
+  byte counts or task counts for measurable work; Cloning has no progress data.
+  No separate phase enum is stored. The orchestrator emits one cloning step
+  and awaits SourceService. Raw process output is drained and discarded;
+  there are no diagnostic output events or Git progress models.
   Consumers and generated Freezed/Riverpod files use this contract.
   Source: [BuildController](../lib/features/build/providers/build_controller.dart).
 
 - [x] **Coalesce progress publication.** A single non-restarting 100ms timer
-  publishes the latest complete snapshot within a step and Git operation.
-  Step-type and Git-operation transitions publish immediately. Tests verify
+  publishes the latest complete snapshot within a measurable step.
+  Step-type transitions publish immediately. Tests verify
   duplicate suppression, raw-count updates, coalescing, resets and cancellation
   on transitions, terminal states and disposal.
 
@@ -161,23 +152,29 @@ fix. Widget rebuilds also do not imply a full-screen repaint for every event.
 
 ## Verification
 
-- [x] Add focused coverage for Git progress parsing, operation transitions,
-  known/unknown totals, duplicate progress, publication coalescing, and scheduled
-  work cleanup. Include fragmented and carriage-return output, submodule
-  transitions, and unrecognized messages. Tests live in `test/features/build/`;
+- [x] Add focused coverage for indeterminate cloning, step transitions,
+  known/unknown download and compilation totals, duplicate progress,
+  publication coalescing and scheduled work cleanup. Tests live in `test/features/build/`;
   PathsService tests cover existing/nested directories and failure propagation.
 - [ ] Verify dependency byte/count progress and Ninja task progress when those
   operations are implemented; 100% followed by a failing exit must remain a
   failure, and unknown totals must not produce invented percentages.
 - [x] Verify equal snapshots do not rebuild the progress UI, and measurement
   updates preserve its heading. Raw diagnostics never enter controller state;
-  parser tests verify unrelated lines do not alter progress.
   Diagnostic-file completeness, flushing and file-write failures are deferred
   with logging.
 - [ ] Check measurable and unknown-progress operations, terminal results, and
   maximize/restore in the running app. Compare frame timing and memory in profile
   mode; distinguish measured improvements from static-code expectations.
 - [x] Run relevant analysis/tests and record their scope and results.
+  Verified after simplifying Git: all 62 tests pass in an isolated snapshot
+  using the committed Skia stub. Live checks are blocked by concurrent unfinished
+  edits to SkiaService; those edits were left untouched. Snapshot analysis has
+  no errors or warnings and retains the 13 existing generated-file lint notices.
+  An offline subprocess check exercised SourceService with a temporary fake Git
+  executable producing large stdout/stderr streams and success/nonzero exits.
+  No network Aseprite clone or native desktop visual check was run.
+
   Verified on 2026-10-20 after the typed-step migration: all 69 tests pass,
   including 38 build tests and 2 Home tests. Tests were migrated before
   production code; the initial run failed on the missing new model contracts.
@@ -216,8 +213,9 @@ fix. Widget rebuilds also do not imply a full-screen repaint for every event.
 
 Tests use controlled responses rather than live HTTP, URL launching or native
 window operations. The earlier local recursive Git clone remains manual
-integration evidence; this suite replays captured output and tests source
-validation, not Process.start, actual pipe draining or Git exit failures. Native
+integration evidence; this suite tests source validation and orchestrator
+waiting/failure behavior. Git percentage parsing and its fixtures have been
+removed. Native
 startup, Linux environment-path selection, live cloning, desktop visual checks,
 frame timing and memory profiling remain outside this unit/widget testing task.
 

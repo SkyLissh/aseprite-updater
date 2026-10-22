@@ -199,36 +199,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Installing the build…'**
   String get build_deploying;
-
-  /// No description provided for @build_connecting_source.
-  ///
-  /// In en, this message translates to:
-  /// **'Connecting to the source repository…'**
-  String get build_connecting_source;
-
-  /// No description provided for @build_downloading_source.
-  ///
-  /// In en, this message translates to:
-  /// **'Downloading source…'**
-  String get build_downloading_source;
-
-  /// No description provided for @build_resolving_source.
-  ///
-  /// In en, this message translates to:
-  /// **'Preparing source…'**
-  String get build_resolving_source;
-
-  /// No description provided for @build_checking_out_source.
-  ///
-  /// In en, this message translates to:
-  /// **'Writing source files…'**
-  String get build_checking_out_source;
-
-  /// No description provided for @build_downloading_submodules.
-  ///
-  /// In en, this message translates to:
-  /// **'Downloading source components…'**
-  String get build_downloading_submodules;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

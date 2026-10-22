@@ -8,16 +8,10 @@ class OrchestratorService(final PathsService paths, final SourceService source) 
     yield const StepChanged(BuildStep.preparing());
     await paths.ensureDirectoriesExist();
 
-    yield const StepChanged(BuildStep.cloning(operation: .connectingSource));
-
-    await for (final progress in source.clone(tag: tag)) {
-      yield StepChanged(
-        BuildStep.cloning(operation: progress.operation, progress: progress.progress),
-      );
-    }
+    yield const StepChanged(BuildStep.cloning());
+    await source.clone(tag: tag);
 
     yield const StepChanged(BuildStep.deploying());
-
     yield const BuildCompleted();
   }
 }

@@ -26,10 +26,5 @@
 	"build_downloading_skia": "Downloading Skia…",
 	"build_configuring": "Preparing the build…",
 	"build_compiling": "Building Aseprite…",
-	"build_deploying": "Installing the build…",
-	"build_connecting_source": "Connecting to the source repository…",
-	"build_downloading_source": "Downloading source…",
-	"build_resolving_source": "Preparing source…",
-	"build_checking_out_source": "Writing source files…",
-	"build_downloading_submodules": "Downloading source components…"
+	"build_deploying": "Installing the build…"
 }

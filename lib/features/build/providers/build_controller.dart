@@ -68,8 +68,8 @@ class BuildController extends _$BuildController {
 
   void _queueStep(BuildStep step) {
     final isTransition = switch ((state.step, step)) {
-      (Cloning(operation: final current), Cloning(operation: final next)) => current != next,
       (Preparing(), Preparing()) ||
+      (Cloning(), Cloning()) ||
       (DownloadingSkia(), DownloadingSkia()) ||
       (Configuring(), Configuring()) ||
       (Compiling(), Compiling()) ||

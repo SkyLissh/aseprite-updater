@@ -1,19 +1,12 @@
-import "dart:async";
-import "dart:convert";
 import "dart:io";
-
-import "package:aseprite_updater/features/build/models/models.dart";
-
-import "git_progress_parser.dart";
 
 class SourceService(final Directory checkout) {
   /// Clones the selected tag and its submodules into a new [checkout].
   ///
-  /// Emits parsed Git progress updates and discards other output. Completion
-  /// means cloning succeeded; startup and nonzero-exit failures are stream errors.
+  /// Drains process output without reporting progress. Completion means cloning
+  /// succeeded; startup and nonzero-exit failures throw.
   /// Existing destinations are rejected, and failed clones are left in place.
-  /// Cancelling the subscription does not terminate Git.
-  Stream<GitProgress> clone({required String tag}) async* {
+  Future<void> clone({required String tag}) async {
     if (tag.trim().isEmpty) {
       throw ArgumentError.value(tag, "tag", "A release tag is required");
     }
@@ -27,15 +20,11 @@ class SourceService(final Directory checkout) {
 
     await Directory(destination).parent.create(recursive: true);
 
-    yield const GitProgress(operation: .connectingSource);
-    final parser = GitProgressParser();
-
     final arguments = [
       "clone",
       "--branch",
       tag,
       "--recurse-submodules",
-      "--progress",
       "--",
       "https://github.com/aseprite/aseprite.git",
       destination,
@@ -44,48 +33,25 @@ class SourceService(final Directory checkout) {
     final process = await Process.start(
       "git",
       arguments,
-      environment: {"GIT_TERMINAL_PROMPT": "0", "LC_ALL": "C"},
+      environment: {"GIT_TERMINAL_PROMPT": "0"},
     );
 
-    final output = StreamController<GitProgress>();
+    var exitCode = 0;
 
-    Future<void> forward(Stream<List<int>> bytes, {required bool isStderr}) => bytes
-        .transform(const Utf8Decoder(allowMalformed: true))
-        .transform(const LineSplitter())
-        .forEach((line) {
-          final progress = parser.parse(line, isStderr: isStderr);
+    await Future.wait<void>([
+      process.stdout.drain<void>(),
+      process.stderr.drain<void>(),
+      process.stdin.close(),
+      process.exitCode.then((value) => exitCode = value),
+    ]);
 
-          if (progress != null) output.add(progress);
-        });
-
-    Future<void> finish() async {
-      try {
-        var exitCode = 0;
-
-        await Future.wait<void>([
-          forward(process.stdout, isStderr: false),
-          forward(process.stderr, isStderr: true),
-          process.stdin.close(),
-          process.exitCode.then((value) => exitCode = value),
-        ]);
-
-        if (exitCode != 0) {
-          throw ProcessException(
-            "git",
-            arguments,
-            "Aseprite clone failed. Check the Git output for details. "
-                "An incomplete checkout may remain at $destination.",
-            exitCode,
-          );
-        }
-      } catch (error, stackTrace) {
-        output.addError(error, stackTrace);
-      } finally {
-        await output.close();
-      }
+    if (exitCode != 0) {
+      throw ProcessException(
+        "git",
+        arguments,
+        "Aseprite clone failed. An incomplete checkout may remain at $destination.",
+        exitCode,
+      );
     }
-
-    unawaited(finish());
-    yield* output.stream;
   }
 }
