@@ -41,6 +41,7 @@ void main() {
       const BuildStep.preparing(),
       const BuildStep.cloning(),
       const BuildStep.downloadingSkia(receivedBytes: 0),
+      const BuildStep.extractingSkia(completedFiles: 0),
       const BuildStep.deploying(),
     ]);
     expect(events.last, isA<BuildCompleted>());
@@ -135,6 +136,49 @@ void main() {
     expect(events.whereType<BuildCompleted>(), isEmpty);
     expect((events.last as StepChanged).step, const BuildStep.downloadingSkia(receivedBytes: 0));
   });
+
+  test("forwards extraction progress and waits before completing", () async {
+    final paths = PathsService(Directory("${temporary.path}/workspace"));
+    final progress = StreamController<ExtractingProgress>();
+    addTearDown(progress.close);
+    final events = <BuildEvent>[];
+    final done = OrchestratorService(
+      paths,
+      _ControlledSource(paths.checkout, (_) async {}),
+      _ControlledSkia(paths.skia, extraction: progress.stream),
+    ).run(tag: "v1").forEach(events.add);
+    progress.add(const ExtractingProgress(completedFiles: 1, totalFiles: 2));
+    while (events.length < 5) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(
+      (events.last as StepChanged).step,
+      const BuildStep.extractingSkia(completedFiles: 1, totalFiles: 2),
+    );
+    expect(events.whereType<BuildCompleted>(), isEmpty);
+
+    await progress.close();
+    await done;
+
+    expect(events.last, isA<BuildCompleted>());
+  });
+
+  test("an extraction failure prevents deployment and completion", () async {
+    final paths = PathsService(Directory("${temporary.path}/workspace"));
+    final events = <BuildEvent>[];
+
+    await expectLater(
+      OrchestratorService(
+        paths,
+        _ControlledSource(paths.checkout, (_) async {}),
+        _ControlledSkia(paths.skia, extraction: Stream.error(StateError("extraction failed"))),
+      ).run(tag: "v1").forEach(events.add),
+      throwsStateError,
+    );
+    expect(events.whereType<BuildCompleted>(), isEmpty);
+    expect((events.last as StepChanged).step, const BuildStep.extractingSkia(completedFiles: 0));
+  });
 }
 
 class _ControlledSource(super.checkout, final Future<void> Function(String) action)
@@ -146,9 +190,13 @@ class _ControlledSource(super.checkout, final Future<void> Function(String) acti
 class _ControlledSkia(
   super.directory, {
   final Stream<DownloadProgress> progress = const Stream.empty(),
+  final Stream<ExtractingProgress> extraction = const Stream.empty(),
 }) extends SkiaService {
   this : super(releaseTag: "test-skia", assetName: "skia.zip");
 
   @override
   Stream<DownloadProgress> download() => progress;
+
+  @override
+  Stream<ExtractingProgress> extract() => extraction;
 }

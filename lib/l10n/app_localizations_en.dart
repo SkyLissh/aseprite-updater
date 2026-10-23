@@ -60,6 +60,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get build_downloading_skia => 'Downloading Skia…';
 
   @override
+  String get build_extracting_skia => 'Extracting Skia…';
+
+  @override
   String get build_configuring => 'Preparing the build…';
 
   @override

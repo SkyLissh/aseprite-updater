@@ -25,6 +25,7 @@ class BuildProgress extends ConsumerWidget {
           Preparing() => l10n.build_preparing_workspace,
           Cloning() => l10n.build_getting_source,
           DownloadingSkia() => l10n.build_downloading_skia,
+          ExtractingSkia() => l10n.build_extracting_skia,
           Configuring() => l10n.build_configuring,
           Compiling() => l10n.build_compiling,
           Deploying() => l10n.build_deploying,

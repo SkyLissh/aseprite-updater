@@ -56,13 +56,14 @@ extension BuildStepPatterns on BuildStep {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( Preparing value)?  preparing,TResult Function( Cloning value)?  cloning,TResult Function( DownloadingSkia value)?  downloadingSkia,TResult Function( Configuring value)?  configuring,TResult Function( Compiling value)?  compiling,TResult Function( Deploying value)?  deploying,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( Preparing value)?  preparing,TResult Function( Cloning value)?  cloning,TResult Function( DownloadingSkia value)?  downloadingSkia,TResult Function( ExtractingSkia value)?  extractingSkia,TResult Function( Configuring value)?  configuring,TResult Function( Compiling value)?  compiling,TResult Function( Deploying value)?  deploying,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case Preparing() when preparing != null:
 return preparing(_that);case Cloning() when cloning != null:
 return cloning(_that);case DownloadingSkia() when downloadingSkia != null:
-return downloadingSkia(_that);case Configuring() when configuring != null:
+return downloadingSkia(_that);case ExtractingSkia() when extractingSkia != null:
+return extractingSkia(_that);case Configuring() when configuring != null:
 return configuring(_that);case Compiling() when compiling != null:
 return compiling(_that);case Deploying() when deploying != null:
 return deploying(_that);case _:
@@ -83,13 +84,14 @@ return deploying(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( Preparing value)  preparing,required TResult Function( Cloning value)  cloning,required TResult Function( DownloadingSkia value)  downloadingSkia,required TResult Function( Configuring value)  configuring,required TResult Function( Compiling value)  compiling,required TResult Function( Deploying value)  deploying,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( Preparing value)  preparing,required TResult Function( Cloning value)  cloning,required TResult Function( DownloadingSkia value)  downloadingSkia,required TResult Function( ExtractingSkia value)  extractingSkia,required TResult Function( Configuring value)  configuring,required TResult Function( Compiling value)  compiling,required TResult Function( Deploying value)  deploying,}){
 final _that = this;
 switch (_that) {
 case Preparing():
 return preparing(_that);case Cloning():
 return cloning(_that);case DownloadingSkia():
-return downloadingSkia(_that);case Configuring():
+return downloadingSkia(_that);case ExtractingSkia():
+return extractingSkia(_that);case Configuring():
 return configuring(_that);case Compiling():
 return compiling(_that);case Deploying():
 return deploying(_that);}
@@ -106,13 +108,14 @@ return deploying(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( Preparing value)?  preparing,TResult? Function( Cloning value)?  cloning,TResult? Function( DownloadingSkia value)?  downloadingSkia,TResult? Function( Configuring value)?  configuring,TResult? Function( Compiling value)?  compiling,TResult? Function( Deploying value)?  deploying,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( Preparing value)?  preparing,TResult? Function( Cloning value)?  cloning,TResult? Function( DownloadingSkia value)?  downloadingSkia,TResult? Function( ExtractingSkia value)?  extractingSkia,TResult? Function( Configuring value)?  configuring,TResult? Function( Compiling value)?  compiling,TResult? Function( Deploying value)?  deploying,}){
 final _that = this;
 switch (_that) {
 case Preparing() when preparing != null:
 return preparing(_that);case Cloning() when cloning != null:
 return cloning(_that);case DownloadingSkia() when downloadingSkia != null:
-return downloadingSkia(_that);case Configuring() when configuring != null:
+return downloadingSkia(_that);case ExtractingSkia() when extractingSkia != null:
+return extractingSkia(_that);case Configuring() when configuring != null:
 return configuring(_that);case Compiling() when compiling != null:
 return compiling(_that);case Deploying() when deploying != null:
 return deploying(_that);case _:
@@ -132,12 +135,13 @@ return deploying(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  preparing,TResult Function()?  cloning,TResult Function( int receivedBytes,  int? totalBytes)?  downloadingSkia,TResult Function()?  configuring,TResult Function( int completedTasks,  int? totalTasks)?  compiling,TResult Function()?  deploying,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  preparing,TResult Function()?  cloning,TResult Function( int receivedBytes,  int? totalBytes)?  downloadingSkia,TResult Function( int completedFiles,  int? totalFiles)?  extractingSkia,TResult Function()?  configuring,TResult Function( int completedTasks,  int? totalTasks)?  compiling,TResult Function()?  deploying,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case Preparing() when preparing != null:
 return preparing();case Cloning() when cloning != null:
 return cloning();case DownloadingSkia() when downloadingSkia != null:
-return downloadingSkia(_that.receivedBytes,_that.totalBytes);case Configuring() when configuring != null:
+return downloadingSkia(_that.receivedBytes,_that.totalBytes);case ExtractingSkia() when extractingSkia != null:
+return extractingSkia(_that.completedFiles,_that.totalFiles);case Configuring() when configuring != null:
 return configuring();case Compiling() when compiling != null:
 return compiling(_that.completedTasks,_that.totalTasks);case Deploying() when deploying != null:
 return deploying();case _:
@@ -158,12 +162,13 @@ return deploying();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  preparing,required TResult Function()  cloning,required TResult Function( int receivedBytes,  int? totalBytes)  downloadingSkia,required TResult Function()  configuring,required TResult Function( int completedTasks,  int? totalTasks)  compiling,required TResult Function()  deploying,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  preparing,required TResult Function()  cloning,required TResult Function( int receivedBytes,  int? totalBytes)  downloadingSkia,required TResult Function( int completedFiles,  int? totalFiles)  extractingSkia,required TResult Function()  configuring,required TResult Function( int completedTasks,  int? totalTasks)  compiling,required TResult Function()  deploying,}) {final _that = this;
 switch (_that) {
 case Preparing():
 return preparing();case Cloning():
 return cloning();case DownloadingSkia():
-return downloadingSkia(_that.receivedBytes,_that.totalBytes);case Configuring():
+return downloadingSkia(_that.receivedBytes,_that.totalBytes);case ExtractingSkia():
+return extractingSkia(_that.completedFiles,_that.totalFiles);case Configuring():
 return configuring();case Compiling():
 return compiling(_that.completedTasks,_that.totalTasks);case Deploying():
 return deploying();}
@@ -180,12 +185,13 @@ return deploying();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  preparing,TResult? Function()?  cloning,TResult? Function( int receivedBytes,  int? totalBytes)?  downloadingSkia,TResult? Function()?  configuring,TResult? Function( int completedTasks,  int? totalTasks)?  compiling,TResult? Function()?  deploying,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  preparing,TResult? Function()?  cloning,TResult? Function( int receivedBytes,  int? totalBytes)?  downloadingSkia,TResult? Function( int completedFiles,  int? totalFiles)?  extractingSkia,TResult? Function()?  configuring,TResult? Function( int completedTasks,  int? totalTasks)?  compiling,TResult? Function()?  deploying,}) {final _that = this;
 switch (_that) {
 case Preparing() when preparing != null:
 return preparing();case Cloning() when cloning != null:
 return cloning();case DownloadingSkia() when downloadingSkia != null:
-return downloadingSkia(_that.receivedBytes,_that.totalBytes);case Configuring() when configuring != null:
+return downloadingSkia(_that.receivedBytes,_that.totalBytes);case ExtractingSkia() when extractingSkia != null:
+return extractingSkia(_that.completedFiles,_that.totalFiles);case Configuring() when configuring != null:
 return configuring();case Compiling() when compiling != null:
 return compiling(_that.completedTasks,_that.totalTasks);case Deploying() when deploying != null:
 return deploying();case _:
@@ -323,6 +329,76 @@ class _$DownloadingSkiaCopyWithImpl<$Res>
   return _then(DownloadingSkia(
 receivedBytes: null == receivedBytes ? _self.receivedBytes : receivedBytes // ignore: cast_nullable_to_non_nullable
 as int,totalBytes: freezed == totalBytes ? _self.totalBytes : totalBytes // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class ExtractingSkia extends BuildStep {
+  const ExtractingSkia({required this.completedFiles, this.totalFiles}): super._();
+
+
+ final  int completedFiles;
+ final  int? totalFiles;
+
+/// Create a copy of BuildStep
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ExtractingSkiaCopyWith<ExtractingSkia> get copyWith => _$ExtractingSkiaCopyWithImpl<ExtractingSkia>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ExtractingSkia&&(identical(other.completedFiles, completedFiles) || other.completedFiles == completedFiles)&&(identical(other.totalFiles, totalFiles) || other.totalFiles == totalFiles));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,completedFiles,totalFiles);
+}
+
+@override
+String toString() {
+    return 'BuildStep.extractingSkia(completedFiles: $completedFiles, totalFiles: $totalFiles)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ExtractingSkiaCopyWith<$Res> implements $BuildStepCopyWith<$Res> {
+  factory $ExtractingSkiaCopyWith(ExtractingSkia value, $Res Function(ExtractingSkia) _then) = _$ExtractingSkiaCopyWithImpl;
+@useResult
+$Res call({
+ int completedFiles, int? totalFiles
+});
+
+
+
+
+}
+/// @nodoc
+class _$ExtractingSkiaCopyWithImpl<$Res>
+    implements $ExtractingSkiaCopyWith<$Res> {
+  _$ExtractingSkiaCopyWithImpl(this._self, this._then);
+
+  final ExtractingSkia _self;
+  final $Res Function(ExtractingSkia) _then;
+
+/// Create a copy of BuildStep
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? completedFiles = null,Object? totalFiles = freezed,}) {
+  return _then(ExtractingSkia(
+completedFiles: null == completedFiles ? _self.completedFiles : completedFiles // ignore: cast_nullable_to_non_nullable
+as int,totalFiles: freezed == totalFiles ? _self.totalFiles : totalFiles // ignore: cast_nullable_to_non_nullable
 as int?,
   ));
 }

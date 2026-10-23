@@ -1,6 +1,8 @@
 import "dart:io";
 
 import "package:dio/dio.dart";
+import "package:archive/archive_io.dart";
+import "package:path/path.dart" as p;
 
 import "package:aseprite_updater/features/build/models/models.dart";
 import "package:aseprite_updater/features/release/models/models.dart";
@@ -63,5 +65,70 @@ class SkiaService(
         if (!controller.isClosed) controller.close();
       }
     });
+  }
+
+  Stream<ExtractingProgress> extract() async* {
+    final zip = File.fromUri(directory.uri.resolve("skia.zip"));
+    final inputStream = InputFileStream(zip.path);
+
+    try {
+      final archive = ZipDecoder().decodeStream(inputStream);
+      if (archive.isEmpty) {
+        throw ArchiveException("Skia archive is empty or invalid");
+      }
+
+      final root = p.normalize(directory.absolute.path);
+      final symlinks = <ArchiveFile>[];
+
+      final totalFiles = archive.where((file) => file.isFile && !file.isSymbolicLink).length;
+      var completedFiles = 0;
+
+      yield ExtractingProgress(completedFiles: completedFiles, totalFiles: totalFiles);
+
+      for (final file in archive) {
+        final outputPath = _extractionPath(root, file.name);
+        if (p.equals(outputPath, p.join(root, "skia.zip"))) {
+          throw ArchiveException("Skia archive cannot overwrite itself");
+        }
+
+        if (file.isSymbolicLink) {
+          symlinks.add(file);
+          continue;
+        }
+
+        if (file.isFile) {
+          final output = OutputFileStream(outputPath);
+
+          try {
+            // TODO: Move extraction to a worker isolate if UI stalls are reported.
+            file.writeContent(output);
+          } finally {
+            await output.close();
+          }
+
+          yield ExtractingProgress(totalFiles: totalFiles, completedFiles: ++completedFiles);
+        } else {
+          await Directory(outputPath).create(recursive: true);
+        }
+      }
+
+      for (final entry in symlinks) {
+        final linkPath = _extractionPath(root, entry.name);
+        _extractionPath(root, entry.symbolicLink!, parent: p.dirname(linkPath));
+
+        await Link(linkPath).create(entry.symbolicLink!, recursive: true);
+      }
+    } finally {
+      await inputStream.close();
+    }
+  }
+
+  String _extractionPath(String root, String name, {String? parent}) {
+    final outputPath = p.normalize(p.join(parent ?? root, name));
+    if (p.isAbsolute(name) || (outputPath != root && !p.isWithin(root, outputPath))) {
+      throw ArchiveException("Skia archive path escapes the extraction directory: $name");
+    }
+
+    return outputPath;
   }
 }

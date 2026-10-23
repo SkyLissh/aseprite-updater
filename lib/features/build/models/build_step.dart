@@ -9,6 +9,7 @@ sealed class BuildStep with _$BuildStep {
   const factory preparing() = Preparing;
   const factory cloning() = Cloning;
   const factory downloadingSkia({required int receivedBytes, int? totalBytes}) = DownloadingSkia;
+  const factory extractingSkia({required int completedFiles, int? totalFiles}) = ExtractingSkia;
   const factory configuring() = Configuring;
   const factory compiling({required int completedTasks, int? totalTasks}) = Compiling;
   const factory deploying() = Deploying;
@@ -18,6 +19,9 @@ sealed class BuildStep with _$BuildStep {
       DownloadingSkia(:final receivedBytes, :final totalBytes)
           when totalBytes != null && totalBytes > 0 =>
         receivedBytes / totalBytes,
+      ExtractingSkia(:final completedFiles, :final totalFiles)
+          when totalFiles != null && totalFiles > 0 =>
+        completedFiles / totalFiles,
       Compiling(:final completedTasks, :final totalTasks)
           when totalTasks != null && totalTasks > 0 =>
         completedTasks / totalTasks,

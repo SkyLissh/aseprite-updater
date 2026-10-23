@@ -119,6 +119,8 @@ void main() {
     (const BuildStep.cloning(), "Getting source code…", null),
     (const BuildStep.downloadingSkia(receivedBytes: 25, totalBytes: 100), "Downloading Skia…", .25),
     (const BuildStep.downloadingSkia(receivedBytes: 25), "Downloading Skia…", null),
+    (const BuildStep.extractingSkia(completedFiles: 1, totalFiles: 4), "Extracting Skia…", .25),
+    (const BuildStep.extractingSkia(completedFiles: 0), "Extracting Skia…", null),
     (const BuildStep.configuring(), "Preparing the build…", null),
     (const BuildStep.compiling(completedTasks: 3, totalTasks: 4), "Building Aseprite…", .75),
     (const BuildStep.compiling(completedTasks: 3), "Building Aseprite…", null),

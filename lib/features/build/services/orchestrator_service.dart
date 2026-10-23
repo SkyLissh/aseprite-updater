@@ -23,7 +23,15 @@ class OrchestratorService(
       );
     }
 
+    yield const StepChanged(.extractingSkia(completedFiles: 0));
+    await for (final progress in skia.extract()) {
+      yield StepChanged(
+        .extractingSkia(completedFiles: progress.completedFiles, totalFiles: progress.totalFiles),
+      );
+    }
+
     yield const StepChanged(.deploying());
+
     yield const BuildCompleted();
   }
 }

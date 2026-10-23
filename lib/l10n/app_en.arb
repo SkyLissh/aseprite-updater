@@ -24,6 +24,7 @@
 	"build_preparing_workspace": "Preparing your workspace…",
 	"build_getting_source": "Getting source code…",
 	"build_downloading_skia": "Downloading Skia…",
+	"build_extracting_skia": "Extracting Skia…",
 	"build_configuring": "Preparing the build…",
 	"build_compiling": "Building Aseprite…",
 	"build_deploying": "Installing the build…"

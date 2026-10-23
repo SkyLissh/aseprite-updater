@@ -117,6 +117,30 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets("extraction snapshots coalesce and transitions discard pending progress", (
+    tester,
+  ) async {
+    unawaited(controller.run(tag: "v1"));
+    step(const BuildStep.extractingSkia(completedFiles: 0, totalFiles: 4));
+    await tester.pump();
+    expect(current().step, const BuildStep.extractingSkia(completedFiles: 0, totalFiles: 4));
+
+    step(const BuildStep.extractingSkia(completedFiles: 1, totalFiles: 4));
+    step(const BuildStep.extractingSkia(completedFiles: 2, totalFiles: 8));
+    await tester.pump();
+    expect(current().step, const BuildStep.extractingSkia(completedFiles: 0, totalFiles: 4));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(current().step, const BuildStep.extractingSkia(completedFiles: 2, totalFiles: 8));
+
+    step(const BuildStep.extractingSkia(completedFiles: 3, totalFiles: 8));
+    step(const BuildStep.configuring());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(current().step, const BuildStep.configuring());
+    orchestrator.add(const BuildCompleted());
+    await tester.pump();
+  });
+
   testWidgets("100 percent does not complete; completion retains the last published step", (
     tester,
   ) async {

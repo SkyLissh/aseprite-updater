@@ -68,7 +68,9 @@ class BuildController extends _$BuildController {
 
   void _queueStep(BuildStep step) {
     final canCoalesce = switch ((state.step, step)) {
-      (DownloadingSkia(), DownloadingSkia()) || (Compiling(), Compiling()) => true,
+      (DownloadingSkia(), DownloadingSkia()) ||
+      (ExtractingSkia(), ExtractingSkia()) ||
+      (Compiling(), Compiling()) => true,
       _ => false,
     };
 

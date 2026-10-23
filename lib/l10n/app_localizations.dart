@@ -182,6 +182,12 @@ abstract class AppLocalizations {
   /// **'Downloading Skia…'**
   String get build_downloading_skia;
 
+  /// No description provided for @build_extracting_skia.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracting Skia…'**
+  String get build_extracting_skia;
+
   /// No description provided for @build_configuring.
   ///
   /// In en, this message translates to:
