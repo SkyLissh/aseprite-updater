@@ -13,6 +13,11 @@ class ControlledOrchestrator extends OrchestratorService {
         PathsService(Directory.systemTemp),
         SourceService(Directory.systemTemp),
         SkiaService(Directory.systemTemp, releaseTag: "test-skia", assetName: "skia.zip"),
+        CompilationService(
+          checkout: Directory.systemTemp,
+          build: Directory.systemTemp,
+          skia: Directory.systemTemp,
+        ),
       );
 
   @override

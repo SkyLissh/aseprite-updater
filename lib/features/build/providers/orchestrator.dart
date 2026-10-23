@@ -11,5 +11,6 @@ OrchestratorService orchestrator(Ref ref) {
     paths,
     SourceService(paths.checkout),
     SkiaService(paths.skia, releaseTag: "m124-08a5439a6b", assetName: "Skia-Linux-Release-x64.zip"),
+    CompilationService(checkout: paths.checkout, build: paths.build, skia: paths.skia),
   );
 }

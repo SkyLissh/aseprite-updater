@@ -115,6 +115,30 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets("compilation changes from unknown progress to a measured bar", (tester) async {
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    orchestrator.add(const StepChanged(BuildStep.compiling(completedTasks: 0)));
+    await showProgress(tester);
+    await tester.pump();
+    expect(find.byType(NesPixelRowLoadingIndicator), findsOneWidget);
+    expect(find.byType(NesProgressBar), findsNothing);
+
+    orchestrator.add(const StepChanged(BuildStep.compiling(completedTasks: 2, totalTasks: 8)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.widget<NesProgressBar>(find.byType(NesProgressBar)).value, .25);
+    expect(find.byType(NesPixelRowLoadingIndicator), findsNothing);
+    expect(find.text("Building Aseprite…"), findsOneWidget);
+    expect(find.textContaining("2/8"), findsNothing);
+
+    orchestrator.add(const StepChanged(BuildStep.compiling(completedTasks: 6, totalTasks: 8)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.widget<NesProgressBar>(find.byType(NesProgressBar)).value, .75);
+    orchestrator.add(const BuildCompleted());
+    await tester.pump();
+  });
+
   for (final (step, heading, fraction) in <(BuildStep, String, double?)>[
     (const BuildStep.cloning(), "Getting source code…", null),
     (const BuildStep.downloadingSkia(receivedBytes: 25, totalBytes: 100), "Downloading Skia…", .25),
