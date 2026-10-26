@@ -1,6 +1,8 @@
 import "dart:async";
 import "dart:io";
 
+import "package:path/path.dart" as p;
+
 import "package:aseprite_updater/features/build/models/models.dart";
 import "package:aseprite_updater/features/build/services/services.dart";
 
@@ -17,6 +19,14 @@ class ControlledOrchestrator extends OrchestratorService {
           checkout: Directory.systemTemp,
           build: Directory.systemTemp,
           skia: Directory.systemTemp,
+        ),
+        DeploymentService(
+          build: Directory.systemTemp,
+          checkout: Directory.systemTemp,
+          installation: Directory.systemTemp,
+          desktopEntry: File(p.join(Directory.systemTemp.path, "aseprite.desktop")),
+          icon: File(p.join(Directory.systemTemp.path, "aseprite.png")),
+          commandLink: Link(p.join(Directory.systemTemp.path, "aseprite")),
         ),
       );
 

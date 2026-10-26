@@ -9,9 +9,11 @@ import "package:aseprite_updater/features/build/services/services.dart";
 void main() {
   late Directory temporary;
   late _ControlledCompilation compilation;
+  late _ControlledDeployment deployment;
   setUp(() async {
     temporary = await Directory.systemTemp.createTemp("updater-orchestrator-");
     compilation = _ControlledCompilation(PathsService(temporary));
+    deployment = _ControlledDeployment(PathsService(temporary));
   });
   tearDown(() async => temporary.delete(recursive: true));
 
@@ -29,6 +31,7 @@ void main() {
       source,
       _ControlledSkia(paths.skia),
       compilation,
+      deployment,
     ).run(tag: "v1").forEach(events.add);
     while (events.length < 2) {
       await Future<void>.delayed(Duration.zero);
@@ -67,6 +70,7 @@ void main() {
         source,
         _ControlledSkia(temporary),
         compilation,
+        deployment,
       ).run(tag: "v1").forEach(events.add),
       throwsA(isA<FileSystemException>()),
     );
@@ -95,6 +99,7 @@ void main() {
         source,
         _ControlledSkia(paths.skia),
         compilation,
+        deployment,
       ).run(tag: "v1").forEach(events.add),
       throwsStateError,
     );
@@ -116,6 +121,7 @@ void main() {
       source,
       _ControlledSkia(paths.skia, progress: progress.stream),
       compilation,
+      deployment,
     ).run(tag: "v1").forEach(events.add);
     progress.add(const DownloadProgress(receivedBytes: 50, totalBytes: 100));
     while (events.length < 4) {
@@ -145,6 +151,7 @@ void main() {
         source,
         _ControlledSkia(paths.skia, progress: Stream.error(StateError("download failed"))),
         compilation,
+        deployment,
       ).run(tag: "v1").forEach(events.add),
       throwsStateError,
     );
@@ -164,6 +171,7 @@ void main() {
       _ControlledSource(paths.checkout, (_) async {}),
       _ControlledSkia(paths.skia, extraction: progress.stream),
       compilation,
+      deployment,
     ).run(tag: "v1").forEach(events.add);
     progress.add(const ExtractingProgress(completedFiles: 1, totalFiles: 2));
     while (events.length < 5) {
@@ -193,6 +201,7 @@ void main() {
         _ControlledSource(paths.checkout, (_) async {}),
         _ControlledSkia(paths.skia, extraction: Stream.error(StateError("extraction failed"))),
         compilation,
+        deployment,
       ).run(tag: "v1").forEach(events.add),
       throwsStateError,
     );
@@ -221,6 +230,7 @@ void main() {
       _ControlledSource(paths.checkout, (_) async {}),
       _ControlledSkia(paths.skia, extraction: extraction.stream),
       compilation,
+      deployment,
     ).run(tag: "v1").forEach(events.add);
     extraction.add(const ExtractingProgress(completedFiles: 1, totalFiles: 1));
     while (events.length < 5) {
@@ -267,6 +277,7 @@ void main() {
         _ControlledSource(paths.checkout, (_) async {}),
         _ControlledSkia(paths.skia),
         compilation,
+        deployment,
       ).run(tag: "v1").forEach(events.add),
       throwsA(same(error)),
     );
@@ -292,6 +303,7 @@ void main() {
       _ControlledSource(paths.checkout, (_) async {}),
       _ControlledSkia(paths.skia),
       compilation,
+      deployment,
     ).run(tag: "v1").forEach(events.add);
     progress.add(const CompilationProgress(completedTasks: 3, totalTasks: 4));
     while (events.length < 7) {
@@ -307,9 +319,11 @@ void main() {
     expect(steps.last.fraction, .75);
     expect(steps.whereType<Deploying>(), isEmpty);
     expect(events.whereType<BuildCompleted>(), isEmpty);
+    expect(deployment.calls, 0);
 
     await progress.close();
     await done;
+    expect(deployment.calls, 1);
     expect((events[events.length - 2] as StepChanged).step, const BuildStep.deploying());
     expect(events.last, isA<BuildCompleted>());
   });
@@ -326,16 +340,84 @@ void main() {
         _ControlledSource(paths.checkout, (_) async {}),
         _ControlledSkia(paths.skia),
         compilation,
+        deployment,
       ).run(tag: "v1").forEach(events.add),
       throwsA(same(error)),
     );
 
     expect(compilation.compileCalls, 1);
+    expect(deployment.calls, 0);
     expect((events.last as StepChanged).step, const BuildStep.compiling(completedTasks: 0));
     expect(
       events.whereType<StepChanged>().map((event) => event.step).whereType<Deploying>(),
       isEmpty,
     );
+    expect(events.whereType<BuildCompleted>(), isEmpty);
+  });
+
+  test("deployment starts after compilation and prevents completion while pending", () async {
+    final paths = PathsService(Directory("${temporary.path}/workspace"));
+    final progress = StreamController<CompilationProgress>();
+    addTearDown(progress.close);
+    compilation = _ControlledCompilation(paths, progress: progress.stream);
+    final started = Completer<void>();
+    final releaseDeployment = Completer<void>();
+    addTearDown(() {
+      if (!releaseDeployment.isCompleted) releaseDeployment.complete();
+    });
+    deployment = _ControlledDeployment(
+      paths,
+      action: () {
+        started.complete();
+        return releaseDeployment.future;
+      },
+    );
+    final events = <BuildEvent>[];
+    final done = OrchestratorService(
+      paths,
+      _ControlledSource(paths.checkout, (_) async {}),
+      _ControlledSkia(paths.skia),
+      compilation,
+      deployment,
+    ).run(tag: "v1").forEach(events.add);
+    while (compilation.compileCalls == 0) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(deployment.calls, 0);
+    await progress.close();
+    await started.future.timeout(const Duration(seconds: 2));
+
+    expect(deployment.calls, 1);
+    expect((events.last as StepChanged).step, const BuildStep.deploying());
+    expect((events.last as StepChanged).step.fraction, isNull);
+    expect(events.whereType<BuildCompleted>(), isEmpty);
+
+    releaseDeployment.complete();
+    await done;
+
+    expect(events.last, isA<BuildCompleted>());
+  });
+
+  test("a deployment failure propagates without completion", () async {
+    final paths = PathsService(Directory("${temporary.path}/workspace"));
+    final error = StateError("deployment failed");
+    deployment = _ControlledDeployment(paths, action: () async => throw error);
+    final events = <BuildEvent>[];
+
+    await expectLater(
+      OrchestratorService(
+        paths,
+        _ControlledSource(paths.checkout, (_) async {}),
+        _ControlledSkia(paths.skia),
+        compilation,
+        deployment,
+      ).run(tag: "v1").forEach(events.add),
+      throwsA(same(error)),
+    );
+
+    expect(deployment.calls, 1);
+    expect((events.last as StepChanged).step, const BuildStep.deploying());
     expect(events.whereType<BuildCompleted>(), isEmpty);
   });
 }
@@ -380,5 +462,26 @@ class _ControlledCompilation(
   Stream<CompilationProgress> compile() {
     compileCalls++;
     return progress;
+  }
+}
+
+class _ControlledDeployment(PathsService paths, {final Future<void> Function()? action})
+    extends DeploymentService {
+  this
+    : super(
+        build: paths.build,
+        checkout: paths.checkout,
+        installation: paths.installation,
+        desktopEntry: paths.desktopEntry,
+        icon: paths.icon,
+        commandLink: paths.commandLink,
+      );
+
+  var calls = 0;
+
+  @override
+  Future<void> deploy() {
+    calls++;
+    return action?.call() ?? Future<void>.value();
   }
 }

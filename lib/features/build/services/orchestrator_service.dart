@@ -1,6 +1,7 @@
 import "package:aseprite_updater/features/build/models/models.dart";
 
 import "compilation_service.dart";
+import "deployment_service.dart";
 import "paths_service.dart";
 import "source_service.dart";
 import "skia_service.dart";
@@ -10,6 +11,7 @@ class OrchestratorService(
   final SourceService source,
   final SkiaService skia,
   final CompilationService compilation,
+  final DeploymentService deployment,
 ) {
   Stream<BuildEvent> run({required String tag}) async* {
     yield const StepChanged(.preparing());
@@ -43,6 +45,7 @@ class OrchestratorService(
     }
 
     yield const StepChanged(.deploying());
+    await deployment.deploy();
 
     yield const BuildCompleted();
   }

@@ -134,6 +134,7 @@ class CompilationService({
       buildDirectory,
       "-G",
       "Ninja",
+      "-DENABLE_UNZIP=OFF",
       "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
       "-DCMAKE_C_COMPILER=clang",
       "-DCMAKE_CXX_COMPILER=clang++",
