@@ -3,7 +3,7 @@ import "dart:io";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
 
-import "package:aseprite_updater/features/build/services/services.dart";
+import "package:aseprite_updater/core/services/paths_service.dart";
 
 void main() {
   late Directory temporary;
@@ -93,7 +93,7 @@ Future<ProcessResult> _commandLinkWithHome(Directory temporary, String? home) as
   await script.writeAsString('''
 import "dart:io";
 
-import "package:aseprite_updater/features/build/services/paths_service.dart";
+import "package:aseprite_updater/core/services/paths_service.dart";
 
 void main() {
   try {

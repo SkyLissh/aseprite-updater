@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:flutter_test/flutter_test.dart";
 
+import "package:aseprite_updater/core/services/paths_service.dart";
 import "package:aseprite_updater/features/build/models/models.dart";
 import "package:aseprite_updater/features/build/services/services.dart";
 

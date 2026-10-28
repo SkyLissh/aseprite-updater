@@ -1,8 +1,8 @@
+import "package:aseprite_updater/core/services/paths_service.dart";
 import "package:aseprite_updater/features/build/models/models.dart";
 
 import "compilation_service.dart";
 import "deployment_service.dart";
-import "paths_service.dart";
 import "source_service.dart";
 import "skia_service.dart";
 

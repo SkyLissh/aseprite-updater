@@ -1,4 +1,3 @@
-export "paths_service.dart";
 export "compilation_service.dart";
 export "deployment_service.dart";
 export "source_service.dart";

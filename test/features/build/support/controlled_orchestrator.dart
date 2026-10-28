@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 
+import "package:aseprite_updater/core/services/paths_service.dart";
 import "package:aseprite_updater/features/build/models/models.dart";
 import "package:aseprite_updater/features/build/services/services.dart";
 
