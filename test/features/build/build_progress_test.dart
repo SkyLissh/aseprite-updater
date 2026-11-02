@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:flutter/material.dart";
 import "package:nes_ui/nes_ui.dart";
@@ -6,6 +7,9 @@ import "package:nes_ui/nes_ui.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:hooks_riverpod/hooks_riverpod.dart";
 
+import "package:aseprite_updater/core/functions/functions.dart";
+import "package:aseprite_updater/core/providers/providers.dart";
+import "package:aseprite_updater/core/services/paths_service.dart";
 import "package:aseprite_updater/core/theme/palette.dart";
 import "package:aseprite_updater/core/theme/spacing.dart";
 import "package:aseprite_updater/features/build/build.dart";
@@ -16,16 +20,25 @@ import "support/controlled_orchestrator.dart";
 void main() {
   late ControlledOrchestrator orchestrator;
   late ProviderContainer container;
+  late int backCalls;
 
   setUp(() {
     orchestrator = ControlledOrchestrator();
+    backCalls = 0;
     container = ProviderContainer(
-      overrides: [orchestratorProvider.overrideWithValue(orchestrator)],
+      overrides: [
+        pathsProvider.overrideWithValue(PathsService(Directory.systemTemp)),
+        orchestratorProvider.overrideWithValue(orchestrator),
+      ],
     );
   });
   tearDown(() => container.dispose());
 
-  Future<void> showProgress(WidgetTester tester, {double width = 400}) => tester.pumpWidget(
+  Future<void> showProgress(
+    WidgetTester tester, {
+    double width = 400,
+    Future<void> Function(Directory) launcher = launchAseprite,
+  }) => tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
@@ -39,6 +52,8 @@ void main() {
               child: Consumer(
                 builder: (context, ref, _) => BuildProgress(
                   status: ref.watch(buildControllerProvider.select((state) => state.status)),
+                  onBack: () => backCalls++,
+                  launcher: launcher,
                 ),
               ),
             ),
@@ -47,6 +62,85 @@ void main() {
       ),
     ),
   );
+
+  testWidgets("failed launch shows an error while Open and Go back remain usable", (tester) async {
+    var attempts = 0;
+    Directory? launchedFrom;
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    await showProgress(
+      tester,
+      launcher: (installation) async {
+        launchedFrom = installation;
+        attempts++;
+
+        if (attempts == 1) {
+          throw const ProcessException("aseprite", [], "Permission denied");
+        }
+      },
+    );
+    orchestrator.add(const BuildCompleted());
+    await tester.pump();
+
+    await tester.tap(find.widgetWithText(NesButton, "Open"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn't open Aseprite. Please try again."), findsOneWidget);
+    expect(tester.widget<NesSnackbar>(find.byType(NesSnackbar)).type, NesSnackbarType.error);
+    expect(container.read(buildControllerProvider).status, BuildStatus.completed);
+    expect(launchedFrom?.path, container.read(pathsProvider).installation.path);
+    expect(find.text("Aseprite is ready to use"), findsOneWidget);
+    expect(attempts, 1);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.widgetWithText(NesButton, "Open"));
+    await tester.pumpAndSettle();
+
+    expect(attempts, 2);
+    expect(container.read(buildControllerProvider).status, BuildStatus.completed);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.widgetWithText(NesButton, "Go back"));
+
+    expect(backCalls, 1);
+  });
+
+  testWidgets("successful launch keeps completion without showing an error", (tester) async {
+    var launches = 0;
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    await showProgress(
+      tester,
+      launcher: (_) async {
+        launches++;
+      },
+    );
+    orchestrator.add(const BuildCompleted());
+    await tester.pump();
+
+    await tester.tap(find.widgetWithText(NesButton, "Open"));
+    await tester.pumpAndSettle();
+
+    expect(launches, 1);
+    expect(find.byType(NesSnackbar), findsNothing);
+    expect(container.read(buildControllerProvider).status, BuildStatus.completed);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("launch failure after the widget is removed is handled safely", (tester) async {
+    final launch = Completer<void>();
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    await showProgress(tester, launcher: (_) => launch.future);
+    orchestrator.add(const BuildCompleted());
+    await tester.pump();
+
+    await tester.tap(find.widgetWithText(NesButton, "Open"));
+    await tester.pumpWidget(const SizedBox.shrink());
+    launch.completeError(const ProcessException("aseprite", [], "Permission denied"));
+    await tester.pump();
+
+    expect(find.byType(NesSnackbar), findsNothing);
+    expect(container.read(buildControllerProvider).status, BuildStatus.completed);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets("workspace preparation and cloning use only animated pixels", (tester) async {
     unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
@@ -188,12 +282,22 @@ void main() {
       expect(
         find.text(switch (status) {
           .idle => "Ready to build",
-          .completed => "Build completed",
+          .completed => "Aseprite is ready to use",
           .failed => "Build failed",
           .running => throw StateError("Unexpected running state"),
         }),
         findsOneWidget,
       );
+      final completionWidgets = status == BuildStatus.completed ? findsOneWidget : findsNothing;
+      expect(find.text("You can also open Aseprite from your application menu"), completionWidgets);
+      expect(find.widgetWithText(NesButton, "Go back"), completionWidgets);
+      expect(find.widgetWithText(NesButton, "Open"), completionWidgets);
+      if (status == BuildStatus.completed) {
+        await tester.tap(find.widgetWithText(NesButton, "Go back"));
+        expect(backCalls, 1);
+      } else {
+        expect(backCalls, 0);
+      }
       expect(find.byType(NesPixelRowLoadingIndicator), findsNothing);
       expect(find.byType(NesProgressBar), findsNothing);
       await tester.pump(const Duration(seconds: 1));

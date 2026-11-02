@@ -27,7 +27,7 @@ class Home extends HookWidget {
               builder: (context, ref, _) {
                 final status = ref.watch(buildControllerProvider.select((state) => state.status));
 
-                return BuildProgress(status: status);
+                return BuildProgress(status: status, onBack: () => section.value = .release);
               },
             ),
             .release => Consumer(

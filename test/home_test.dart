@@ -66,6 +66,7 @@ void main() {
         if (fails) {
           orchestrator.streams.last.addError(StateError("clone failed"));
         } else {
+          repo.current = "v1.3.0";
           orchestrator.add(const BuildCompleted());
         }
         await tester.pump();
@@ -74,10 +75,29 @@ void main() {
           fails ? BuildStatus.failed : BuildStatus.completed,
         );
         await tester.pump();
-        expect(find.text(fails ? "Build failed" : "Build completed"), findsOneWidget);
+        expect(find.text(fails ? "Build failed" : "Aseprite is ready to use"), findsOneWidget);
+        final completionWidgets = fails ? findsNothing : findsOneWidget;
+        expect(
+          find.text("You can also open Aseprite from your application menu"),
+          completionWidgets,
+        );
+        expect(find.widgetWithText(NesButton, "Go back"), completionWidgets);
+        expect(find.widgetWithText(NesButton, "Open"), completionWidgets);
         expect(find.byType(NesProgressBar), findsNothing);
         expect(find.byType(NesPixelRowLoadingIndicator), findsNothing);
         expect(tester.takeException(), isNull);
+
+        if (!fails) {
+          await tester.tap(find.widgetWithText(NesButton, "Go back"));
+          await tester.pump();
+          await tester.pump();
+
+          expect(find.text("Aseprite v1.3.0"), findsOneWidget);
+          expect(find.text("Update"), findsOneWidget);
+          expect(find.byType(BuildProgress), findsNothing);
+          expect(orchestrator.tags, ["v1.3.0"]);
+          expect(repo.calls, 2);
+        }
 
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();

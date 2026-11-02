@@ -22,6 +22,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get update => 'Update';
 
   @override
+  String get open => 'Open';
+
+  @override
+  String get back => 'Go back';
+
+  @override
+  String get aseprite_launch_failed => 'Couldn\'t open Aseprite. Please try again.';
+
+  @override
   String released_on(DateTime date) {
     final intl.DateFormat dateDateFormat = intl.DateFormat.yMMMMd(localeName);
     final String dateString = dateDateFormat.format(date);
@@ -51,7 +60,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get build_start => 'Start build';
 
   @override
-  String get build_completed => 'Build completed';
+  String get build_completed => 'Aseprite is ready to use';
+
+  @override
+  String get build_completed_sidenote => 'You can also open Aseprite from your application menu';
 
   @override
   String get build_failed => 'Build failed';

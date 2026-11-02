@@ -116,6 +116,24 @@ abstract class AppLocalizations {
   /// **'Update'**
   String get update;
 
+  /// No description provided for @open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get open;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get back;
+
+  /// No description provided for @aseprite_launch_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open Aseprite. Please try again.'**
+  String get aseprite_launch_failed;
+
   /// Release publication date shown in the release dialog
   ///
   /// In en, this message translates to:
@@ -167,8 +185,14 @@ abstract class AppLocalizations {
   /// No description provided for @build_completed.
   ///
   /// In en, this message translates to:
-  /// **'Build completed'**
+  /// **'Aseprite is ready to use'**
   String get build_completed;
+
+  /// No description provided for @build_completed_sidenote.
+  ///
+  /// In en, this message translates to:
+  /// **'You can also open Aseprite from your application menu'**
+  String get build_completed_sidenote;
 
   /// No description provided for @build_failed.
   ///
