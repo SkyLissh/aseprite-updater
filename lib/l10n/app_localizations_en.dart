@@ -45,6 +45,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get build_idle => 'Ready to build';
 
   @override
+  String get build_start_message => 'Let\'s start building Aseprite!';
+
+  @override
+  String get build_start => 'Start build';
+
+  @override
   String get build_completed => 'Build completed';
 
   @override

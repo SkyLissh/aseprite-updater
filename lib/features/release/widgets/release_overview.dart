@@ -15,20 +15,20 @@ class ReleaseOverview extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final release = ref.watch(latestReleaseProvider);
+    final releases = ref.watch(releasesProvider);
 
     final spacing = Theme.of(context).spacing;
     final l10n = context.l10n;
 
-    return switch (release) {
-      AsyncData(:final value) => Column(
+    return switch (releases) {
+      AsyncData(:final value) when value.current != null => Column(
+        spacing: spacing.lg,
         mainAxisAlignment: .center,
         children: [
-          NesIcon(iconData: NesIcons.download, size: const Size.square(64)),
-          SizedBox(height: spacing.lg),
-          Text("${l10n.aseprite} ${value.tagName}"),
-          SizedBox(height: spacing.lg),
+          NesIcon(iconData: NesIcons.download, size: const .square(64)),
+          Text("${l10n.aseprite} ${value.current}"),
           Row(
+            spacing: spacing.lg,
             mainAxisAlignment: .center,
             children: [
               NesButton.text(
@@ -36,16 +36,30 @@ class ReleaseOverview extends ConsumerWidget {
                 text: l10n.changelog,
                 onPressed: () => showDialog(
                   context: context,
-                  builder: (_) => ReleaseModal(tagName: value.tagName, body: value.body),
+                  builder: (_) =>
+                      ReleaseModal(tagName: value.latest.tagName, body: value.latest.body),
                 ),
               ),
-              SizedBox(width: spacing.lg),
               NesButton.text(
                 type: .primary,
                 text: l10n.update,
-                onPressed: () => onUpdate(value.tagName),
+                onPressed: () => onUpdate(value.latest.tagName),
               ),
             ],
+          ),
+        ],
+      ),
+      AsyncData(:final value) => Column(
+        mainAxisAlignment: .center,
+        spacing: spacing.lg,
+        children: [
+          NesIcon(iconData: NesIcons.moon, size: const .square(64)),
+          Text(l10n.build_start_message),
+          SizedBox(height: spacing.lg),
+          NesButton.text(
+            type: .primary,
+            text: l10n.build_start,
+            onPressed: () => onUpdate(value.latest.tagName),
           ),
         ],
       ),

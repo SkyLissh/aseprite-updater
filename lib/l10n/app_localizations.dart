@@ -152,6 +152,18 @@ abstract class AppLocalizations {
   /// **'Ready to build'**
   String get build_idle;
 
+  /// No description provided for @build_start_message.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s start building Aseprite!'**
+  String get build_start_message;
+
+  /// No description provided for @build_start.
+  ///
+  /// In en, this message translates to:
+  /// **'Start build'**
+  String get build_start;
+
   /// No description provided for @build_completed.
   ///
   /// In en, this message translates to:

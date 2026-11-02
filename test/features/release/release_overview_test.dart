@@ -20,7 +20,7 @@ void main() {
     updates = [];
     container = ProviderContainer(
       retry: (_, _) => null,
-      overrides: [repoProvider.overrideWithValue(repo)],
+      overrides: [releaseServiceProvider.overrideWithValue(repo)],
     );
   });
   tearDown(() => container.dispose());
@@ -46,16 +46,34 @@ void main() {
     expect(updates, isEmpty);
   });
 
-  testWidgets("loaded release shows its tag and Update passes the exact tag", (tester) async {
+  testWidgets("shows the installed tag and Update passes the latest tag", (tester) async {
     repo.result.complete(releaseFixture());
     await showOverview(tester);
 
-    expect(find.text("Aseprite v1.3.0"), findsOneWidget);
+    expect(find.text("Aseprite v1.2.0"), findsOneWidget);
     expect(find.byType(NesHourglassLoadingIndicator), findsNothing);
     await tester.tap(find.text("Update"));
     await tester.pump();
 
     expect(updates, ["v1.3.0"]);
+  });
+
+  testWidgets("no installed release shows Start build and passes the latest tag", (tester) async {
+    repo.current = null;
+    repo.result.complete(releaseFixture().copyWith(tagName: "v1.4.0"));
+    await showOverview(tester);
+
+    expect(find.text("Let's start building Aseprite!"), findsOneWidget);
+    expect(find.widgetWithText(NesButton, "Start build"), findsOneWidget);
+    expect(find.text("Update"), findsNothing);
+    expect(find.text("Changelog"), findsNothing);
+    expect(updates, isEmpty);
+
+    await tester.tap(find.widgetWithText(NesButton, "Start build"));
+    await tester.pump();
+
+    expect(updates, ["v1.4.0"]);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("changelog opens the release modal with the matching Markdown", (tester) async {

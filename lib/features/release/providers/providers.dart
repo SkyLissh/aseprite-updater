@@ -1,2 +1,2 @@
 export "release.dart";
-export "repo.dart";
+export "release_service.dart";

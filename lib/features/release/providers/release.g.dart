@@ -9,35 +9,46 @@ part of 'release.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(latestRelease)
-final latestReleaseProvider = LatestReleaseProvider._();
+@ProviderFor(Releases)
+final releasesProvider = ReleasesProvider._();
 
-final class LatestReleaseProvider
-    extends $FunctionalProvider<AsyncValue<Release>, Release, FutureOr<Release>>
-    with $FutureModifier<Release>, $FutureProvider<Release> {
-  LatestReleaseProvider._()
+final class ReleasesProvider
+    extends $AsyncNotifierProvider<Releases, ReleaseState> {
+  ReleasesProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'latestReleaseProvider',
+        name: r'releasesProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$latestReleaseHash();
+  String debugGetCreateSourceHash() => _$releasesHash();
 
   @$internal
   @override
-  $FutureProviderElement<Release> $createElement($ProviderPointer pointer) =>
-      $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<Release> create(Ref ref) {
-    return latestRelease(ref);
-  }
+  Releases create() => Releases();
 }
 
-String _$latestReleaseHash() => r'02c3a41e7d5a60641b5f5e681ce5714f9d00c804';
+String _$releasesHash() => r'8509429431fd34a1b4c0e02b1b2f8bd67d5757c3';
+
+abstract class _$Releases extends $AsyncNotifier<ReleaseState> {
+  FutureOr<ReleaseState> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<ReleaseState>, ReleaseState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<ReleaseState>, ReleaseState>,
+              AsyncValue<ReleaseState>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

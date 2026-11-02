@@ -10,6 +10,7 @@ import "package:aseprite_updater/features/build/build.dart";
 import "package:aseprite_updater/features/release/providers/providers.dart";
 
 import "features/build/support/controlled_orchestrator.dart";
+import "features/release/support/controlled_repo.dart";
 import "features/release/support/release_fixture.dart";
 import "features/release/support/release_test_app.dart";
 import "features/window/support/window_manager_fake.dart";
@@ -22,10 +23,11 @@ void main() {
         final native = WindowManagerFake()..install();
         final listenersBefore = windowManager.listeners.length;
         final orchestrator = ControlledOrchestrator();
+        final repo = ControlledRepo()..result.complete(releaseFixture());
         final container = ProviderContainer(
           retry: (_, _) => null,
           overrides: [
-            latestReleaseProvider.overrideWith((ref) => releaseFixture()),
+            releaseServiceProvider.overrideWithValue(repo),
             orchestratorProvider.overrideWithValue(orchestrator),
           ],
         );
@@ -35,7 +37,7 @@ void main() {
           UncontrolledProviderScope(container: container, child: releaseTestApp(const Home())),
         );
         await tester.pump();
-        expect(find.text("Aseprite v1.3.0"), findsOneWidget);
+        expect(find.text("Aseprite v1.2.0"), findsOneWidget);
         expect(windowManager.listeners.length, listenersBefore + 1);
 
         await tester.tap(find.text("Update"));

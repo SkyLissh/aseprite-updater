@@ -325,6 +325,7 @@ void main() {
     await progress.close();
     await done;
     expect(deployment.calls, 1);
+    expect(deployment.tags, ["v1"]);
     expect((events[events.length - 2] as StepChanged).step, const BuildStep.deploying());
     expect(events.last, isA<BuildCompleted>());
   });
@@ -390,6 +391,7 @@ void main() {
     await started.future.timeout(const Duration(seconds: 2));
 
     expect(deployment.calls, 1);
+    expect(deployment.tags, ["v1"]);
     expect((events.last as StepChanged).step, const BuildStep.deploying());
     expect((events.last as StepChanged).step.fraction, isNull);
     expect(events.whereType<BuildCompleted>(), isEmpty);
@@ -418,6 +420,7 @@ void main() {
     );
 
     expect(deployment.calls, 1);
+    expect(deployment.tags, ["v1"]);
     expect((events.last as StepChanged).step, const BuildStep.deploying());
     expect(events.whereType<BuildCompleted>(), isEmpty);
   });
@@ -479,9 +482,11 @@ class _ControlledDeployment(PathsService paths, {final Future<void> Function()? 
       );
 
   var calls = 0;
+  final tags = <String>[];
 
   @override
-  Future<void> deploy() {
+  Future<void> deploy({required String tag}) {
+    tags.add(tag);
     calls++;
     return action?.call() ?? Future<void>.value();
   }

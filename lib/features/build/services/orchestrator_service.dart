@@ -45,7 +45,7 @@ class OrchestratorService(
     }
 
     yield const StepChanged(.deploying());
-    await deployment.deploy();
+    await deployment.deploy(tag: tag);
 
     yield const BuildCompleted();
   }

@@ -25,7 +25,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         retry: (_, _) => null,
-        overrides: [repoProvider.overrideWithValue(repo)],
+        overrides: [releaseServiceProvider.overrideWithValue(repo)],
         child: AsepriteUpdater(theme: releaseTestTheme()),
       ),
     );
@@ -41,7 +41,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text("Aseprite v1.3.0"), findsOneWidget);
+    expect(find.text("Aseprite v1.2.0"), findsOneWidget);
     expect(find.text("Update"), findsOneWidget);
     expect(find.text("Changelog"), findsOneWidget);
     final context = tester.element(find.byType(Home));

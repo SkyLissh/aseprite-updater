@@ -11,7 +11,7 @@ class DeploymentService({
   required final File icon,
   required final Link commandLink,
 }) {
-  Future<void> deploy() async {
+  Future<void> deploy({required String tag}) async {
     if (!Platform.isLinux) {
       throw UnsupportedError("Aseprite deployment currently supports Linux only");
     }
@@ -19,6 +19,7 @@ class DeploymentService({
     await _install();
     await _publishDesktopEntry();
     await _publishCommand();
+    await _saveRelease(tag);
   }
 
   Future<void> _install() async {
@@ -144,5 +145,11 @@ class DeploymentService({
 
     await destination.parent.create(recursive: true);
     await destination.create(executable.path);
+  }
+
+  Future<void> _saveRelease(String tag) async {
+    final release = File(p.join(installation.path, "release"));
+
+    await release.writeAsString(tag, flush: true);
   }
 }
