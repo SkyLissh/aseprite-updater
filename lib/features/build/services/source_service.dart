@@ -1,11 +1,6 @@
 import "dart:io";
 
 class SourceService(final Directory checkout) {
-  /// Clones the selected tag and its submodules into a new [checkout].
-  ///
-  /// Drains process output without reporting progress. Completion means cloning
-  /// succeeded; startup and nonzero-exit failures throw.
-  /// Existing destinations are rejected, and failed clones are left in place.
   Future<void> clone({required String tag}) async {
     if (tag.trim().isEmpty) {
       throw ArgumentError.value(tag, "tag", "A release tag is required");
