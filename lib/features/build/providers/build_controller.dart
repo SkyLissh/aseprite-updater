@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:aseprite_updater/core/logger.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 
@@ -59,6 +60,7 @@ class BuildController extends _$BuildController {
         throw StateError("Build event stream ended without completing");
       }
     } catch (error) {
+      loggger.e("Something went wrong", error: error);
       _cancelProgress();
       if (ref.mounted) {
         state = state.copyWith(status: .failed, errorMessage: error.toString());

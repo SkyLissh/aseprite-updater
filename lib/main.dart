@@ -7,9 +7,12 @@ import "package:hooks_riverpod/hooks_riverpod.dart";
 import "package:aseprite_updater/l10n/app_localizations.dart";
 import "package:aseprite_updater/core/router.dart" as app_router;
 import "package:aseprite_updater/core/theme/theme.dart";
+import "package:aseprite_updater/core/logger.dart";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  configureLogger();
 
   await windowManager.ensureInitialized();
 

@@ -52,6 +52,7 @@ dependencies:
   auto_route: ^11.2.0
   archive: ^4.5.2
   path: ^1.9.1
+  logger: ^2.8.0
 
 dev_dependencies:
   flutter_test:
