@@ -1,21 +1,37 @@
 {
-	"@@locale": "en",
-	"app_title": "Aseprite Updater",
-	"aseprite": "Aseprite",
-	"changelog": "Changelog",
-	"update": "Update",
-	"released_on": "Released {date}",
-	"@released_on": {
-		"description": "Release publication date shown in the release dialog",
-		"placeholders": {
-			"date": {
-				"type": "DateTime",
-				"format": "yMMMMd"
-			}
-		}
-	},
-	"pre_release": "Pre-release",
-	"something_went_wrong": "Something went wrong",
-	"retry": "Retry",
-	"close": "Close"
+  "@@locale": "en",
+  "app_title": "Aseprite Updater",
+  "aseprite": "Aseprite",
+  "changelog": "Changelog",
+  "update": "Update",
+  "open": "Open",
+  "back": "Go back",
+  "aseprite_launch_failed": "Couldn't open Aseprite. Please try again.",
+  "released_on": "Released {date}",
+  "@released_on": {
+    "description": "Release publication date shown in the release dialog",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "yMMMMd"
+      }
+    }
+  },
+  "pre_release": "Pre-release",
+  "something_went_wrong": "Something went wrong",
+  "retry": "Retry",
+  "close": "Close",
+  "build_idle": "Ready to build",
+  "build_start_message": "Let's start building Aseprite!",
+  "build_start": "Start build",
+  "build_completed": "Aseprite is ready to use",
+  "build_completed_sidenote": "You can also open Aseprite from your application menu",
+  "build_failed": "Build failed",
+  "build_preparing_workspace": "Preparing your workspace…",
+  "build_getting_source": "Getting source code…",
+  "build_downloading_skia": "Downloading Skia…",
+  "build_extracting_skia": "Extracting Skia…",
+  "build_configuring": "Preparing the build…",
+  "build_compiling": "Building Aseprite…",
+  "build_deploying": "Installing the build…"
 }

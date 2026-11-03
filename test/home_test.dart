@@ -1,0 +1,108 @@
+import "package:flutter/material.dart";
+import "package:nes_ui/nes_ui.dart";
+
+import "package:flutter_test/flutter_test.dart";
+import "package:hooks_riverpod/hooks_riverpod.dart";
+import "package:window_manager/window_manager.dart";
+
+import "package:aseprite_updater/core/screens/home.dart";
+import "package:aseprite_updater/features/build/build.dart";
+import "package:aseprite_updater/features/release/providers/providers.dart";
+
+import "features/build/support/controlled_orchestrator.dart";
+import "features/release/support/controlled_repo.dart";
+import "features/release/support/release_fixture.dart";
+import "features/release/support/release_test_app.dart";
+import "features/window/support/window_manager_fake.dart";
+
+void main() {
+  for (final fails in [false, true]) {
+    testWidgets(
+      "Update starts the selected release and shows ${fails ? 'failure' : 'completion'}",
+      (tester) async {
+        final native = WindowManagerFake()..install();
+        final listenersBefore = windowManager.listeners.length;
+        final orchestrator = ControlledOrchestrator();
+        final repo = ControlledRepo()..result.complete(releaseFixture());
+        final container = ProviderContainer(
+          retry: (_, _) => null,
+          overrides: [
+            releaseServiceProvider.overrideWithValue(repo),
+            orchestratorProvider.overrideWithValue(orchestrator),
+          ],
+        );
+        addTearDown(native.uninstall);
+        addTearDown(container.dispose);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(container: container, child: releaseTestApp(const Home())),
+        );
+        await tester.pump();
+        expect(find.text("Aseprite v1.2.0"), findsOneWidget);
+        expect(windowManager.listeners.length, listenersBefore + 1);
+
+        await tester.tap(find.text("Update"));
+        await tester.pump();
+        expect(orchestrator.tags, ["v1.3.0"]);
+        expect(find.text("Preparing your workspace…"), findsOneWidget);
+        expect(find.text("Update"), findsNothing);
+
+        orchestrator.add(const StepChanged(BuildStep.cloning()));
+        await tester.pump();
+        expect(find.byType(NesProgressBar), findsNothing);
+        expect(find.byType(NesPixelRowLoadingIndicator), findsOneWidget);
+        expect(find.text("Getting source code…"), findsOneWidget);
+        expect(container.read(buildControllerProvider).status, BuildStatus.running);
+
+        final progressElement = tester.element(find.byType(BuildProgress));
+        for (final event in ["maximize", "unmaximize"]) {
+          native.emit(event);
+          await tester.pump();
+
+          expect(tester.element(find.byType(BuildProgress)), same(progressElement));
+          expect(orchestrator.tags, ["v1.3.0"]);
+          expect(windowManager.listeners.length, listenersBefore + 1);
+        }
+
+        if (fails) {
+          orchestrator.streams.last.addError(StateError("clone failed"));
+        } else {
+          repo.current = "v1.3.0";
+          orchestrator.add(const BuildCompleted());
+        }
+        await tester.pump();
+        expect(
+          container.read(buildControllerProvider).status,
+          fails ? BuildStatus.failed : BuildStatus.completed,
+        );
+        await tester.pump();
+        expect(find.text(fails ? "Build failed" : "Aseprite is ready to use"), findsOneWidget);
+        final completionWidgets = fails ? findsNothing : findsOneWidget;
+        expect(
+          find.text("You can also open Aseprite from your application menu"),
+          completionWidgets,
+        );
+        expect(find.widgetWithText(NesButton, "Go back"), completionWidgets);
+        expect(find.widgetWithText(NesButton, "Open"), completionWidgets);
+        expect(find.byType(NesProgressBar), findsNothing);
+        expect(find.byType(NesPixelRowLoadingIndicator), findsNothing);
+        expect(tester.takeException(), isNull);
+
+        if (!fails) {
+          await tester.tap(find.widgetWithText(NesButton, "Go back"));
+          await tester.pump();
+          await tester.pump();
+
+          expect(find.text("Aseprite v1.3.0"), findsOneWidget);
+          expect(find.text("Update"), findsOneWidget);
+          expect(find.byType(BuildProgress), findsNothing);
+          expect(orchestrator.tags, ["v1.3.0"]);
+          expect(repo.calls, 2);
+        }
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        expect(windowManager.listeners.length, listenersBefore);
+      },
+    );
+  }
+}

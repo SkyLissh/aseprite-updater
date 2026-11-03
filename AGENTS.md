@@ -46,8 +46,83 @@ Close every change with a clear account:
 - ❌ what was NOT done (explicitly, even if obvious)
 - ⏳ what needs extra input, data, or decisions from the user before continuation
 
+## Commit guidelines
+
+- **Format:** follow gitmoji-cli's emoji-first format: `<emoji> <description>` or
+  `<emoji> (<scope>): <description>`. Use one Unicode emoji, an optional feature/component
+  scope, and a concise, imperative description. Do not prepend Conventional Commit types
+  such as `feat:` or `fix:`.
+- **Emoji selection:** use the meanings from the [official Gitmoji guide](https://gitmoji.dev/),
+  which gitmoji-cli uses for its emoji picker. Consult `gitmoji --list` or
+  `gitmoji --search <keyword>` when choosing an emoji; do not invent project-specific meanings.
+  Common choices: ✨ new features, 🐛 bug fixes, 📝 documentation, ♻️ refactoring,
+  🎨 code structure/formatting, 💄 UI/style, ✅ tests, 🔧 configuration, 🌐 localization,
+  and 🚚 file/resource moves or renames. Choose the emoji matching the commit's main purpose.
+- **Examples:** `✨ add incremental builds`, `🐛 (release): handle missing assets`,
+  `🚚 rename releases feature folder`, `📝 document commit guidelines`.
+- **Manual workflow:** `gitmoji -c` prompts for the emoji, optional scope (when enabled),
+  title, and optional body (when enabled). Agents must use the same message format even
+  when committing with Git directly. See the [CLI documentation](https://github.com/carloscuesta/gitmoji-cli#commit)
+  and [Gitmoji specification](https://gitmoji.dev/specification).
+- **Authorization:** these guidelines do not authorize staging or committing changes;
+  create commits only when explicitly requested. Leave existing commit history unchanged
+  unless a rewrite is explicitly requested.
+- **Simple validation:** run the full test suite and static analysis once on the final
+  implementation before committing. Reuse those results when splitting related changes
+  into commits; do not routinely rerun the suite for each commit. Repeat checks only after
+  substantive code changes, failures, or concrete unresolved concerns. Documentation-only
+  and generated-whitespace-only changes do not require another full test run.
+- **Cohesive groups:** group related source code, tests, and generated outputs by the purpose
+  of the change. Keep generated files with the source changes that produce them. Use ordinary
+  Git staging, diff, and status checks; avoid custom verification scripts and temporary staged
+  snapshots for routine commits unless a concrete problem requires them.
+- **Preserve generated output:** commit generated files as produced by the generator. Do not
+  manually edit or normalize their whitespace merely to satisfy a diff check. Use the normal
+  generator and project checks rather than custom generated-file content verification unless
+  investigating an actual generation problem.
+
 ## Code guidelines
 
+- **Vertical spacing:** use a single blank line to separate logical steps inside methods,
+  such as setup, guard clauses, state changes, and a final return. Keep closely related
+  declarations or cleanup assignments together. Preserve intentional spacing when editing;
+  do not compress distinct steps or add a blank line after every statement mechanically.
+  For example:
+  ```dart
+  if (event.operation != state.operation) {
+    _cancelProgress();
+
+    state = state.copyWith(operation: event.operation, progress: event.value);
+
+    return;
+  }
+  ```
+- **Import paths:** relative imports are allowed for files in the current directory or its
+  descendants, such as `import "build_phase.dart";` or `import "widgets/widgets.dart";`.
+  Do not use relative imports containing parent-directory (`..`) segments, such as
+  `../models/models.dart` or `../../something.dart`; use `package:aseprite_updater/...` instead.
+  Prefer existing barrel files when they expose the needed symbols.
+- **Import organization:** separate these groups with a blank line, in this order (omit empty groups):
+  1. Dart SDK imports (`dart:...`), Flutter framework, and the UI package (`nes_ui`).
+  2. State management, generators/annotations, and other third-party libraries.
+  3. Project `package:aseprite_updater/...` imports, preferring existing barrels.
+  4. Relative imports within the current directory or its descendants
+     (`"something.dart"`, `"widgets/widgets.dart"`).
+  For example:
+  ```dart
+  import "dart:async";
+  import "package:flutter/material.dart";
+  import "package:nes_ui/nes_ui.dart";
+
+  import "package:flutter_hooks/flutter_hooks.dart";
+  import "package:hooks_riverpod/hooks_riverpod.dart";
+
+  import "package:aseprite_updater/core/theme/theme.dart";
+  import "package:aseprite_updater/features/build/providers/providers.dart";
+
+  import "build_phase.dart";
+  import "widgets/widgets.dart";
+  ```
 - **Feature-based architecture** (`core/`, `l10n/`, `features/<feature>/{models,services,
   providers,widgets}`). Flat inside features; no `data/domain/presentation` ceremony.
 - **One widget per file.** Two widgets in a file are acceptable only when the second is small
@@ -85,8 +160,7 @@ compiles Aseprite from source on the user's machine and keeps it updated. We nev
 binaries (Aseprite license); no Docker / cross-compilation. Skia comes precompiled per platform.
 Updates rebuild incrementally from a git clone, not fresh source archives.
 
-Phases (details in the Obsidian vault `Documents/Obsidian/Aseprite Updater/` — kanban + phase
-files + architecture notes):
+Phases:
 
 1. Build pipeline works on Linux (dev machine), deps assumed present.
 2. Update flow: tag detection → incremental rebuild → swap-on-success.

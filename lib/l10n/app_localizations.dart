@@ -116,6 +116,24 @@ abstract class AppLocalizations {
   /// **'Update'**
   String get update;
 
+  /// No description provided for @open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get open;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get back;
+
+  /// No description provided for @aseprite_launch_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open Aseprite. Please try again.'**
+  String get aseprite_launch_failed;
+
   /// Release publication date shown in the release dialog
   ///
   /// In en, this message translates to:
@@ -145,6 +163,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get close;
+
+  /// No description provided for @build_idle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to build'**
+  String get build_idle;
+
+  /// No description provided for @build_start_message.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s start building Aseprite!'**
+  String get build_start_message;
+
+  /// No description provided for @build_start.
+  ///
+  /// In en, this message translates to:
+  /// **'Start build'**
+  String get build_start;
+
+  /// No description provided for @build_completed.
+  ///
+  /// In en, this message translates to:
+  /// **'Aseprite is ready to use'**
+  String get build_completed;
+
+  /// No description provided for @build_completed_sidenote.
+  ///
+  /// In en, this message translates to:
+  /// **'You can also open Aseprite from your application menu'**
+  String get build_completed_sidenote;
+
+  /// No description provided for @build_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Build failed'**
+  String get build_failed;
+
+  /// No description provided for @build_preparing_workspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing your workspace…'**
+  String get build_preparing_workspace;
+
+  /// No description provided for @build_getting_source.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting source code…'**
+  String get build_getting_source;
+
+  /// No description provided for @build_downloading_skia.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading Skia…'**
+  String get build_downloading_skia;
+
+  /// No description provided for @build_extracting_skia.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracting Skia…'**
+  String get build_extracting_skia;
+
+  /// No description provided for @build_configuring.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the build…'**
+  String get build_configuring;
+
+  /// No description provided for @build_compiling.
+  ///
+  /// In en, this message translates to:
+  /// **'Building Aseprite…'**
+  String get build_compiling;
+
+  /// No description provided for @build_deploying.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing the build…'**
+  String get build_deploying;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
