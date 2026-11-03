@@ -2,12 +2,30 @@
 
 This is our shared tracker for the review findings and agreed improvements.
 The user leads implementation; the assistant helps explain tradeoffs, review
-changes, and handle explicitly requested fixes. This is not the reverted
-implementation plan, and it does not authorize code changes or commits.
+changes, and handle explicitly requested fixes. This checklist does not
+authorize code changes or commits.
 
 Check an item only after its behavior has been verified. Record evidence beside
 completed items. An unchecked item can be in progress; it does not mean no code
 has been written.
+
+## Current Linux milestone
+
+The pipeline now prepares the workspace, clones the selected Aseprite tag and
+submodules, downloads and extracts the configured precompiled Skia asset,
+configures CMake, compiles with Ninja, and installs into a private prefix.
+Deployment publishes desktop integration and the command link, then records the
+installed tag before reporting completion. Required build tools and system
+dependencies are assumed to be installed.
+
+The release screen distinguishes a first installation from an existing installed
+tag. The completed-build screen offers Open and Go back. Incremental updates,
+interrupted-run recovery, dependency installation, and other platform ports
+remain separate follow-up work.
+
+Sources: [OrchestratorService](../lib/features/build/services/orchestrator_service.dart),
+[DeploymentService](../lib/features/build/services/deployment_service.dart),
+[ReleaseOverview](../lib/features/release/widgets/release_overview.dart).
 
 ## User-facing progress instead of logs
 
@@ -31,17 +49,19 @@ drains and discards Git output without parsing progress.
 
 ### Progress by operation
 
-The table describes the intended presentation as each operation is implemented;
-it does not mean dependency installation or compilation exists in the pipeline
-already. Each percentage belongs to the named operation, not the entire build.
+The table describes the current Linux pipeline. Each percentage belongs to the
+named operation, not the entire build. Automatic installation of system
+dependencies remains deferred.
 
-| Operation | What can be measured | Suggested presentation |
+| Operation | What can be measured | Current presentation |
 | --- | --- | --- |
+| Workspace preparation | No percentage assumed | "Preparing your workspace…" with the animated indicator |
 | Git clone, including checkout and submodules | No percentages or sub-operation progress | "Getting source code…" with the existing animated indicator |
-| Dependency downloads, including precompiled Skia | Received bytes / total bytes, when a reliable total is available | "Downloading required components — 42%" |
-| Dependency installation | Progress exposed by the chosen installer; otherwise completed components | Percentage when supported; otherwise "Installing component 2 of 4" with an animated indicator |
+| Skia download | Received bytes / total bytes, when a reliable total is available | "Downloading Skia…" with a progress bar or animated indicator |
+| Skia extraction | Completed regular files / total regular files | "Extracting Skia…" with per-operation progress |
 | CMake configuration | No universal percentage assumed | "Preparing the build…" with an animated indicator |
-| Ninja compilation | Finished build tasks / total build tasks | "Building Aseprite — 73%" |
+| Ninja compilation | Finished build tasks / total build tasks, when available | "Building Aseprite…" with a progress bar or animated indicator |
+| Deployment | No percentage assumed | "Installing the build…" with the animated indicator |
 
 - [x] **Use the existing NES UI widgets for known and unknown totals.** In
   installed nes_ui 0.32.0, NesProgressBar requires a double value from 0 to 1 and
@@ -68,11 +88,13 @@ already. Each percentage belongs to the named operation, not the entire build.
   Steps with no reliable total use the animated indicator. Implement these
   adapters alongside the corresponding future dependency operations.
 
-- [ ] **Read compilation progress from Ninja when compilation is added.**
-  NINJA_STATUS supports finished tasks (%f), total tasks (%t), and a finished-task
-  percentage (%p). Prefer a recognizable status prefix to parsing arbitrary
-  compiler messages. Task percentage is not percentage of elapsed time: linking
-  can take longer than many compilation tasks. Keep CMake configuration separate.
+- [x] **Read compilation progress from Ninja.** CompilationService sets a
+  recognizable NINJA_STATUS prefix with finished and total task counts, then
+  parses only matching status lines. Unknown totals use the animated indicator.
+  Task percentage is not percentage of elapsed time: linking can take longer
+  than many compilation tasks. CMake configuration remains a separate operation.
+  Verified by [compilation process tests](../test/features/build/services/compilation_process_test.dart)
+  and [build progress tests](../test/features/build/build_progress_test.dart).
 
 - [x] **Avoid a fabricated overall percentage.** Start with named operations and
   per-operation progress. Do not assign arbitrary weights to cloning, dependency
@@ -93,8 +115,10 @@ already. Each percentage belongs to the named operation, not the entire build.
   sealed BuildStep snapshot, run status and errorMessage. Step variants carry
   byte counts or task counts for measurable work; Cloning has no progress data.
   No separate phase enum is stored. The orchestrator emits one cloning step
-  and awaits SourceService. Raw process output is drained and discarded;
-  there are no diagnostic output events or Git progress models.
+  and awaits SourceService. Git output is drained and discarded. CMake and Ninja
+  failures can include captured process output in their exceptions, which the
+  controller retains as errorMessage. There are no growing live-log snapshots,
+  diagnostic output events, or Git progress models in UI state.
   Consumers and generated Freezed/Riverpod files use this contract.
   Source: [BuildController](../lib/features/build/providers/build_controller.dart).
 
@@ -113,7 +137,13 @@ already. Each percentage belongs to the named operation, not the entire build.
   file location discoverable for troubleshooting without showing its contents
   in the app. Decide and review how file-write failures are reported without
   masking the build result. Source for the app-data root:
-  [PathsService](../lib/features/build/services/paths_service.dart).
+  [PathsService](../lib/core/services/paths_service.dart).
+
+- [x] **Add application logging without claiming full build-file logging.**
+  The shared logger is configured at startup: warning level in release builds
+  and debug level otherwise. Release metadata, build failures, and launch errors
+  are logged. This does not implement the complete diagnostic file described
+  above. Sources: [logger](../lib/core/logger.dart) and [startup](../lib/main.dart).
 
 The existing `await for` consumption of orchestrator events is appropriate.
 The concern is unnecessary output accumulation, publication frequency, and
@@ -136,6 +166,32 @@ fix. Widget rebuilds also do not imply a full-screen repaint for every event.
   Sources: [BuildController](../lib/features/build/providers/build_controller.dart)
   and [Home](../lib/core/screens/home.dart).
 
+- [x] **Offer completion actions and handle launch failures.** Open launches
+  the installed executable; Go back returns to the release screen. A failed
+  launch logs the exception and stack trace and shows a localized error snackbar
+  while preserving completed build state. The local launch callback checks
+  context.mounted before showing feedback after an asynchronous failure.
+  Widget tests cover success, failure, another launch attempt, Back availability,
+  and failure after the widget is removed. Source:
+  [BuildProgress](../lib/features/build/widgets/build_progress.dart).
+
+- [x] **Represent installed and available releases separately.** ReleaseState
+  contains the latest release metadata and an optional installed tag.
+  ReleaseService reads the plain-text `installed/release` record; deployment
+  writes the selected tag after installation and integration succeed. The
+  notifier watches a separate service provider, and update checks preserve the
+  installed tag. Tests override the service rather than replacing notifier
+  initialization and cover newer tags, invalidation, initial-error recovery,
+  deployment persistence, and tag forwarding. Sources:
+  [release provider](../lib/features/release/providers/release.dart),
+  [ReleaseService](../lib/features/release/services/release_service.dart),
+  [deployment tests](../test/features/build/services/deployment_service_test.dart).
+
+- [x] **Localize and cover the first-install view.** With no installed tag,
+  ReleaseOverview shows the localized start message and Start build button.
+  Update and Changelog are absent; starting a build forwards the latest tag.
+  Verified by [release overview tests](../test/features/release/release_overview_test.dart).
+
 - [x] **Preserve the window child hierarchy.** WindowShell retains its container
   and outer Scaffold, hiding the border with transparency and removing padding
   when maximized. It owns the caption, controls and the single useWindow call;
@@ -156,40 +212,24 @@ fix. Widget rebuilds also do not imply a full-screen repaint for every event.
   known/unknown download and compilation totals, duplicate progress,
   publication coalescing and scheduled work cleanup. Tests live in `test/features/build/`;
   PathsService tests cover existing/nested directories and failure propagation.
-- [ ] Verify dependency byte/count progress and Ninja task progress when those
-  operations are implemented; 100% followed by a failing exit must remain a
-  failure, and unknown totals must not produce invented percentages.
+- [x] Verify Skia download/extraction progress and Ninja task progress.
+  Service and widget tests cover measured and unknown totals; orchestrator and
+  controller tests verify that progress followed by failure remains a failure.
+  Sources: [build tests](../test/features/build/).
 - [x] Verify equal snapshots do not rebuild the progress UI, and measurement
-  updates preserve its heading. Raw diagnostics never enter controller state;
-  Diagnostic-file completeness, flushing and file-write failures are deferred
-  with logging.
+  updates preserve its heading. Raw diagnostics are not published as live-log
+  snapshots; captured failure output can be retained in errorMessage.
+  Diagnostic-file completeness, flushing and file-write failures remain deferred.
 - [ ] Check measurable and unknown-progress operations, terminal results, and
   maximize/restore in the running app. Compare frame timing and memory in profile
   mode; distinguish measured improvements from static-code expectations.
 - [x] Run relevant analysis/tests and record their scope and results.
-  Verified after simplifying Git: all 62 tests pass in an isolated snapshot
-  using the committed Skia stub. Live checks are blocked by concurrent unfinished
-  edits to SkiaService; those edits were left untouched. Snapshot analysis has
-  no errors or warnings and retains the 13 existing generated-file lint notices.
-  An offline subprocess check exercised SourceService with a temporary fake Git
-  executable producing large stdout/stderr streams and success/nonzero exits.
-  No network Aseprite clone or native desktop visual check was run.
-
-  Verified on 2026-10-20 after the typed-step migration: all 69 tests pass,
-  including 38 build tests and 2 Home tests. Tests were migrated before
-  production code; the initial run failed on the missing new model contracts.
-  Whole-project analysis has no errors or warnings; the same 13 generated
-  `release.g.dart` double-quote lint notices remain. The Skia service is a
-  disconnected typed stub, not a working downloader. No live Git clone or
-  native desktop visual verification was performed for this migration.
-
-  Verified on 2026-10-19: `flutter test --coverage` passes all 58 tests, including
-  27 focused build tests. The obsolete MyApp test and leftover percentage
-  expectations no longer block the suite. Whole-project analysis has no errors
-  or warnings; 13 existing double-quote lint notices remain in generated
-  `release.g.dart`. Formatting and `git diff --check` pass. Coverage is written
-  to `coverage/lcov.info`; recorded non-generated Dart lines, excluding generated
-  localization, total 356/447 (79.6%). No coverage threshold is imposed.
+  Latest implementation validation on 2026-11-02: the full suite passed with
+  **167 tests passed and 4 skipped**. Whole-project analysis reported no errors
+  or warnings, with 20 existing generated-code informational notices. Commands:
+  `.fvm/flutter_sdk/bin/flutter test --no-pub --reporter expanded` and
+  `.fvm/flutter_sdk/bin/dart analyze`. These recorded results precede this
+  documentation-only update; no additional test run is needed for the prose.
 - [x] **Cover the real app and Home flow.** The smoke test mounts
   AsepriteUpdater through its real router, checks localized release content and
   listener cleanup. Home tests verify selected-tag forwarding, release-to-build
@@ -211,17 +251,17 @@ fix. Widget rebuilds also do not imply a full-screen repaint for every event.
   events. This does not establish native desktop behavior or frame timing.
   Sources: [window tests](../test/features/window/).
 
-Tests use controlled responses rather than live HTTP, URL launching or native
-window operations. The earlier local recursive Git clone remains manual
-integration evidence; this suite tests source validation and orchestrator
-waiting/failure behavior. Git percentage parsing and its fixtures have been
-removed. Native
-startup, Linux environment-path selection, live cloning, desktop visual checks,
-frame timing and memory profiling remain outside this unit/widget testing task.
+HTTP, application launching, and window operations use controlled responses in
+tests. Compilation and deployment tests also exercise small native-tool fixtures;
+they do not build or launch the real Aseprite application. Source validation and
+orchestrator waiting/failure behavior are covered. A live network clone, complete
+Aseprite build, native desktop visual checks, frame timing, and memory profiling
+were not part of the latest automated verification.
 
 ## Deferred findings and unfinished work
 
-These are retained for visibility, not included in the current build/window work.
+These remain outside the completed Linux milestone. Recovery is explicitly
+deferred; the items below document follow-up work rather than extend this PR.
 
 - [ ] **Font packaging:** chosen Google Fonts are not bundled; fresh installs
   depend on downloading them. Deferred by request. Source:
@@ -232,11 +272,6 @@ These are retained for visibility, not included in the current build/window work
 - [ ] **Release link errors:** launchUrl is not awaited inside its try/catch, so
   asynchronous failures escape that handler. Deferred with release work. Source:
   [ReleaseModal](../lib/features/release/widgets/release_modal.dart).
-- [ ] **Orchestrator stages:** the current pipeline clones, then emits
-  deploying/completed. Compilation and deployment are unfinished roadmap work,
-  not implemented by this documentation update. Use the operation table as those
-  stages are added; do not expand this cleanup into implementing them. Source:
-  [OrchestratorService](../lib/features/build/services/orchestrator_service.dart).
 - [ ] **Repeat builds/update flow:** cloning rejects an existing destination;
   incremental updates and recovery of incomplete checkouts remain future work.
   Source: [SourceService](../lib/features/build/services/source_service.dart).
@@ -246,6 +281,40 @@ These are retained for visibility, not included in the current build/window work
 - [ ] **Minimized state:** the window hook sets isMinimized on minimization but
   does not reset it on restore. Lower priority; currently unused by visible UI.
   Source: [useWindow](../lib/features/window/hooks/use_window.dart).
+
+### Interrupted-run recovery (deferred)
+
+The intended direction is to preserve valid work and retry incomplete operations,
+rather than delete the entire workspace after an interruption. This is not
+implemented and does not block the current Linux milestone. The exact persistence
+format, validation rules, and platform-specific activation mechanism still need
+design work before implementation.
+
+- [ ] **Record the intended build inputs.** Persist the selected Aseprite tag
+  and relevant Skia/build inputs so recovery continues the original target,
+  even if a newer release becomes available. Validate artifacts on disk instead
+  of trusting a saved phase or a directory's existence alone.
+- [ ] **Reuse or repair source checkouts.** Reuse a valid updater-owned checkout
+  for the target tag and ensure submodules are ready. Recreate only an incomplete
+  checkout that cannot be repaired; do not delete unrelated user files.
+- [ ] **Keep completed Skia work.** Reuse a validated archive matching the
+  required release and asset. Initially restart incomplete downloads; HTTP range
+  resuming can be considered later. Extract into a temporary directory and
+  publish it only after successful completion.
+- [ ] **Reuse compatible build output.** Reconfigure and rerun Ninja using the
+  existing build directory when inputs remain compatible. Let Ninja determine
+  which outputs need rebuilding; discard only incompatible or unusable build
+  output instead of restarting the entire pipeline.
+- [ ] **Protect the last working installation.** Stage and validate a replacement
+  separately before a recoverable activation step. Current deployment installs
+  directly into `installed/`; saving the release tag last does not prevent an
+  interrupted install from leaving partially updated files. This protection is
+  future work, not a guarantee of the current implementation.
+- [ ] **Coordinate processes and recovery UI.** Stop build processes cleanly
+  during normal shutdown and prevent concurrent or leftover processes from
+  writing to the same workspace during recovery. On reopening, offer to continue
+  the recorded target or explicitly start over. Keep installed-release identity
+  separate from an unfinished build attempt.
 
 ## References
 
