@@ -341,7 +341,7 @@ as int?,
 
 class ExtractingSkia extends BuildStep {
   const ExtractingSkia({required this.completedFiles, this.totalFiles}): super._();
-
+  
 
  final  int completedFiles;
  final  int? totalFiles;

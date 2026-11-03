@@ -81,7 +81,7 @@ as String?,
 @override
 @pragma('vm:prefer-inline')
 $BuildStepCopyWith<$Res> get step {
-
+  
   return $BuildStepCopyWith<$Res>(_self.step, (value) {
     return _then(_self.copyWith(step: value));
   });
@@ -293,7 +293,7 @@ as String?,
 @override
 @pragma('vm:prefer-inline')
 $BuildStepCopyWith<$Res> get step {
-
+  
   return $BuildStepCopyWith<$Res>(_self.step, (value) {
     return _then(_self.copyWith(step: value));
   });

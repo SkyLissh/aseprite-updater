@@ -67,6 +67,19 @@ Close every change with a clear account:
 - **Authorization:** these guidelines do not authorize staging or committing changes;
   create commits only when explicitly requested. Leave existing commit history unchanged
   unless a rewrite is explicitly requested.
+- **Simple validation:** run the full test suite and static analysis once on the final
+  implementation before committing. Reuse those results when splitting related changes
+  into commits; do not routinely rerun the suite for each commit. Repeat checks only after
+  substantive code changes, failures, or concrete unresolved concerns. Documentation-only
+  and generated-whitespace-only changes do not require another full test run.
+- **Cohesive groups:** group related source code, tests, and generated outputs by the purpose
+  of the change. Keep generated files with the source changes that produce them. Use ordinary
+  Git staging, diff, and status checks; avoid custom verification scripts and temporary staged
+  snapshots for routine commits unless a concrete problem requires them.
+- **Preserve generated output:** commit generated files as produced by the generator. Do not
+  manually edit or normalize their whitespace merely to satisfy a diff check. Use the normal
+  generator and project checks rather than custom generated-file content verification unless
+  investigating an actual generation problem.
 
 ## Code guidelines
 

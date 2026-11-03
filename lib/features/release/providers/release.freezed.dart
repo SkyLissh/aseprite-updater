@@ -80,7 +80,7 @@ as String?,
 @override
 @pragma('vm:prefer-inline')
 $ReleaseCopyWith<$Res> get latest {
-
+  
   return $ReleaseCopyWith<$Res>(_self.latest, (value) {
     return _then(_self.copyWith(latest: value));
   });
@@ -223,7 +223,7 @@ return $default(_that.latest,_that.current);case _:
 
 class _ReleaseState implements ReleaseState {
   const _ReleaseState({required this.latest, this.current});
-
+  
 
 @override final  Release latest;
 @override final  String? current;
@@ -290,7 +290,7 @@ as String?,
 @override
 @pragma('vm:prefer-inline')
 $ReleaseCopyWith<$Res> get latest {
-
+  
   return $ReleaseCopyWith<$Res>(_self.latest, (value) {
     return _then(_self.copyWith(latest: value));
   });
