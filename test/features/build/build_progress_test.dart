@@ -66,7 +66,7 @@ void main() {
   testWidgets("failed launch shows an error while Open and Go back remain usable", (tester) async {
     var attempts = 0;
     Directory? launchedFrom;
-    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1", operation: .install));
     await showProgress(
       tester,
       launcher: (installation) async {
@@ -106,7 +106,7 @@ void main() {
 
   testWidgets("successful launch keeps completion without showing an error", (tester) async {
     var launches = 0;
-    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1", operation: .install));
     await showProgress(
       tester,
       launcher: (_) async {
@@ -127,7 +127,7 @@ void main() {
 
   testWidgets("launch failure after the widget is removed is handled safely", (tester) async {
     final launch = Completer<void>();
-    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1", operation: .install));
     await showProgress(tester, launcher: (_) => launch.future);
     orchestrator.add(const BuildCompleted());
     await tester.pump();
@@ -143,7 +143,7 @@ void main() {
   });
 
   testWidgets("workspace preparation and cloning use only animated pixels", (tester) async {
-    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1", operation: .install));
     await showProgress(tester);
     expect(find.text("Preparing your workspace…"), findsOneWidget);
     expect(find.byType(NesPixelRowLoadingIndicator), findsOneWidget);
@@ -162,7 +162,7 @@ void main() {
   testWidgets("measured download progress uses a bounded bar; equal snapshots do not rebuild it", (
     tester,
   ) async {
-    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1", operation: .install));
     orchestrator.add(
       const StepChanged(BuildStep.downloadingSkia(receivedBytes: 42, totalBytes: 100)),
     );
@@ -188,7 +188,7 @@ void main() {
   });
 
   testWidgets("measurement updates preserve the heading and progress subtree", (tester) async {
-    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1", operation: .install));
     orchestrator.add(
       const StepChanged(BuildStep.downloadingSkia(receivedBytes: 10, totalBytes: 100)),
     );
@@ -210,7 +210,7 @@ void main() {
   });
 
   testWidgets("compilation changes from unknown progress to a measured bar", (tester) async {
-    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+    unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1", operation: .install));
     orchestrator.add(const StepChanged(BuildStep.compiling(completedTasks: 0)));
     await showProgress(tester);
     await tester.pump();
@@ -245,7 +245,9 @@ void main() {
     (const BuildStep.deploying(), "Installing the build…", null),
   ]) {
     testWidgets("$step renders its heading and measured or unknown progress", (tester) async {
-      unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+      unawaited(
+        container.read(buildControllerProvider.notifier).run(tag: "v1", operation: .install),
+      );
       orchestrator.add(StepChanged(step));
       await showProgress(tester);
       await tester.pump();
@@ -267,7 +269,9 @@ void main() {
       tester,
     ) async {
       if (status != BuildStatus.idle) {
-        unawaited(container.read(buildControllerProvider.notifier).run(tag: "v1"));
+        unawaited(
+          container.read(buildControllerProvider.notifier).run(tag: "v1", operation: .install),
+        );
         orchestrator.add(const StepChanged(BuildStep.cloning()));
         await showProgress(tester);
         if (status == BuildStatus.failed) {

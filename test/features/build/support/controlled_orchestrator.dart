@@ -10,6 +10,7 @@ import "package:aseprite_updater/features/build/services/services.dart";
 class ControlledOrchestrator extends OrchestratorService {
   final streams = <StreamController<BuildEvent>>[];
   final tags = <String>[];
+  final operations = <BuildOperation>[];
 
   new()
     : super(
@@ -32,8 +33,9 @@ class ControlledOrchestrator extends OrchestratorService {
       );
 
   @override
-  Stream<BuildEvent> run({required String tag}) {
+  Stream<BuildEvent> run({required String tag, required BuildOperation operation}) {
     tags.add(tag);
+    operations.add(operation);
     final stream = StreamController<BuildEvent>();
     streams.add(stream);
     return stream.stream;

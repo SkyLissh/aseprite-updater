@@ -19,32 +19,33 @@ abstract class BuildState with _$BuildState {
   const factory({
     @Default(BuildStep.preparing()) BuildStep step,
     @Default(BuildStatus.idle) BuildStatus status,
+    @Default(BuildOperation.install) BuildOperation operation,
     String? errorMessage,
   }) = _BuildState;
 }
 
 @Riverpod(keepAlive: true)
 class BuildController extends _$BuildController {
-  late OrchestratorService _orchestrator;
   Timer? _progressTimer;
   BuildStep? _pendingStep;
 
   @override
   BuildState build() {
-    _orchestrator = ref.read(orchestratorProvider);
     ref.onDispose(_cancelProgress);
 
     return const BuildState();
   }
 
-  Future<void> run({required String tag}) async {
-    if (state.status == BuildStatus.running) return;
+  Future<void> run({required String tag, required BuildOperation operation}) async {
+    if (state.status == .running) return;
 
     _cancelProgress();
-    state = const BuildState(status: .running);
+    state = BuildState(status: .running, operation: operation);
+
+    final orchestrator = ref.read(orchestratorProvider);
 
     try {
-      await for (final event in _orchestrator.run(tag: tag)) {
+      await for (final event in orchestrator.run(tag: tag, operation: operation)) {
         if (!ref.mounted) return;
 
         switch (event) {
@@ -60,7 +61,7 @@ class BuildController extends _$BuildController {
         throw StateError("Build event stream ended without completing");
       }
     } catch (error) {
-      loggger.e("Something went wrong", error: error);
+      logger.e("Something went wrong", error: error);
       _cancelProgress();
       if (ref.mounted) {
         state = state.copyWith(status: .failed, errorMessage: error.toString());

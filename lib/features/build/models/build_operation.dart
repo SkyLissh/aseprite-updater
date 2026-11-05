@@ -1,0 +1,1 @@
+enum BuildOperation { install, update }

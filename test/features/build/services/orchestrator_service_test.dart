@@ -18,6 +18,22 @@ void main() {
   });
   tearDown(() async => temporary.delete(recursive: true));
 
+  test("update prepares existing source without cloning", () async {
+    final paths = PathsService(temporary);
+    final source = _UpdateSource(paths.checkout);
+    final events = await OrchestratorService(
+      paths,
+      source,
+      _ControlledSkia(paths.skia),
+      compilation,
+      deployment,
+    ).run(tag: "v2", operation: .update).toList();
+
+    expect(source.tags, ["v2"]);
+    expect(events.last, isA<BuildCompleted>());
+    expect(deployment.tags, ["v2"]);
+  });
+
   test("cloning stays indeterminate until the source finishes", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
     final releaseClone = Completer<void>();
@@ -33,7 +49,7 @@ void main() {
       _ControlledSkia(paths.skia),
       compilation,
       deployment,
-    ).run(tag: "v1").forEach(events.add);
+    ).run(tag: "v1", operation: .install).forEach(events.add);
     while (events.length < 2) {
       await Future<void>.delayed(Duration.zero);
     }
@@ -72,7 +88,7 @@ void main() {
         _ControlledSkia(temporary),
         compilation,
         deployment,
-      ).run(tag: "v1").forEach(events.add),
+      ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsA(isA<FileSystemException>()),
     );
     expect(cloned, isFalse);
@@ -101,7 +117,7 @@ void main() {
         _ControlledSkia(paths.skia),
         compilation,
         deployment,
-      ).run(tag: "v1").forEach(events.add),
+      ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsStateError,
     );
     expect(events, hasLength(2));
@@ -123,7 +139,7 @@ void main() {
       _ControlledSkia(paths.skia, progress: progress.stream),
       compilation,
       deployment,
-    ).run(tag: "v1").forEach(events.add);
+    ).run(tag: "v1", operation: .install).forEach(events.add);
     progress.add(const DownloadProgress(receivedBytes: 50, totalBytes: 100));
     while (events.length < 4) {
       await Future<void>.delayed(Duration.zero);
@@ -153,7 +169,7 @@ void main() {
         _ControlledSkia(paths.skia, progress: Stream.error(StateError("download failed"))),
         compilation,
         deployment,
-      ).run(tag: "v1").forEach(events.add),
+      ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsStateError,
     );
     expect(events.whereType<BuildCompleted>(), isEmpty);
@@ -173,7 +189,7 @@ void main() {
       _ControlledSkia(paths.skia, extraction: progress.stream),
       compilation,
       deployment,
-    ).run(tag: "v1").forEach(events.add);
+    ).run(tag: "v1", operation: .install).forEach(events.add);
     progress.add(const ExtractingProgress(completedFiles: 1, totalFiles: 2));
     while (events.length < 5) {
       await Future<void>.delayed(Duration.zero);
@@ -203,7 +219,7 @@ void main() {
         _ControlledSkia(paths.skia, extraction: Stream.error(StateError("extraction failed"))),
         compilation,
         deployment,
-      ).run(tag: "v1").forEach(events.add),
+      ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsStateError,
     );
     expect(events.whereType<BuildCompleted>(), isEmpty);
@@ -232,7 +248,7 @@ void main() {
       _ControlledSkia(paths.skia, extraction: extraction.stream),
       compilation,
       deployment,
-    ).run(tag: "v1").forEach(events.add);
+    ).run(tag: "v1", operation: .install).forEach(events.add);
     extraction.add(const ExtractingProgress(completedFiles: 1, totalFiles: 1));
     while (events.length < 5) {
       await Future<void>.delayed(Duration.zero);
@@ -279,7 +295,7 @@ void main() {
         _ControlledSkia(paths.skia),
         compilation,
         deployment,
-      ).run(tag: "v1").forEach(events.add),
+      ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsA(same(error)),
     );
 
@@ -305,7 +321,7 @@ void main() {
       _ControlledSkia(paths.skia),
       compilation,
       deployment,
-    ).run(tag: "v1").forEach(events.add);
+    ).run(tag: "v1", operation: .install).forEach(events.add);
     progress.add(const CompilationProgress(completedTasks: 3, totalTasks: 4));
     while (events.length < 7) {
       await Future<void>.delayed(Duration.zero);
@@ -343,7 +359,7 @@ void main() {
         _ControlledSkia(paths.skia),
         compilation,
         deployment,
-      ).run(tag: "v1").forEach(events.add),
+      ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsA(same(error)),
     );
 
@@ -381,7 +397,7 @@ void main() {
       _ControlledSkia(paths.skia),
       compilation,
       deployment,
-    ).run(tag: "v1").forEach(events.add);
+    ).run(tag: "v1", operation: .install).forEach(events.add);
     while (compilation.compileCalls == 0) {
       await Future<void>.delayed(Duration.zero);
     }
@@ -415,7 +431,7 @@ void main() {
         _ControlledSkia(paths.skia),
         compilation,
         deployment,
-      ).run(tag: "v1").forEach(events.add),
+      ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsA(same(error)),
     );
 
@@ -430,6 +446,18 @@ class _ControlledSource(super.checkout, final Future<void> Function(String) acti
     extends SourceService {
   @override
   Future<void> clone({required String tag}) => action(tag);
+}
+
+class _UpdateSource(super.checkout) extends SourceService {
+  final tags = <String>[];
+
+  @override
+  Future<void> clone({required String tag}) async => throw StateError("Update must not clone");
+
+  @override
+  Future<void> update({required String tag}) async {
+    tags.add(tag);
+  }
 }
 
 class _ControlledSkia(

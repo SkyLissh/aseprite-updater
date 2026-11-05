@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$BuildState {
 
- BuildStep get step; BuildStatus get status; String? get errorMessage;
+ BuildStep get step; BuildStatus get status; BuildOperation get operation; String? get errorMessage;
 /// Create a copy of BuildState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +27,20 @@ $BuildStateCopyWith<BuildState> get copyWith => _$BuildStateCopyWithImpl<BuildSt
 @override
 bool operator ==(Object other) {
   final _this = this as BuildState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BuildState&&(identical(other.step, _this.step) || other.step == _this.step)&&(identical(other.status, _this.status) || other.status == _this.status)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BuildState&&(identical(other.step, _this.step) || other.step == _this.step)&&(identical(other.status, _this.status) || other.status == _this.status)&&(identical(other.operation, _this.operation) || other.operation == _this.operation)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
 }
 
 
 @override
 int get hashCode {
   final _this = this as BuildState;
-  return Object.hash(runtimeType,_this.step,_this.status,_this.errorMessage);
+  return Object.hash(runtimeType,_this.step,_this.status,_this.operation,_this.errorMessage);
 }
 
 @override
 String toString() {
   final _this = this as BuildState;
-  return 'BuildState(step: ${_this.step}, status: ${_this.status}, errorMessage: ${_this.errorMessage})';
+  return 'BuildState(step: ${_this.step}, status: ${_this.status}, operation: ${_this.operation}, errorMessage: ${_this.errorMessage})';
 }
 
 
@@ -51,7 +51,7 @@ abstract mixin class $BuildStateCopyWith<$Res>  {
   factory $BuildStateCopyWith(BuildState value, $Res Function(BuildState) _then) = _$BuildStateCopyWithImpl;
 @useResult
 $Res call({
- BuildStep step, BuildStatus status, String? errorMessage
+ BuildStep step, BuildStatus status, BuildOperation operation, String? errorMessage
 });
 
 
@@ -68,11 +68,12 @@ class _$BuildStateCopyWithImpl<$Res>
 
 /// Create a copy of BuildState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? step = null,Object? status = null,Object? errorMessage = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? step = null,Object? status = null,Object? operation = null,Object? errorMessage = freezed,}) {
   return _then(BuildState(
 step: null == step ? _self.step : step // ignore: cast_nullable_to_non_nullable
 as BuildStep,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as BuildStatus,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as BuildStatus,operation: null == operation ? _self.operation : operation // ignore: cast_nullable_to_non_nullable
+as BuildOperation,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -167,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( BuildStep step,  BuildStatus status,  String? errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( BuildStep step,  BuildStatus status,  BuildOperation operation,  String? errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BuildState() when $default != null:
-return $default(_that.step,_that.status,_that.errorMessage);case _:
+return $default(_that.step,_that.status,_that.operation,_that.errorMessage);case _:
   return orElse();
 
 }
@@ -188,10 +189,10 @@ return $default(_that.step,_that.status,_that.errorMessage);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( BuildStep step,  BuildStatus status,  String? errorMessage)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( BuildStep step,  BuildStatus status,  BuildOperation operation,  String? errorMessage)  $default,) {final _that = this;
 switch (_that) {
 case _BuildState():
-return $default(_that.step,_that.status,_that.errorMessage);case _:
+return $default(_that.step,_that.status,_that.operation,_that.errorMessage);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -208,10 +209,10 @@ return $default(_that.step,_that.status,_that.errorMessage);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( BuildStep step,  BuildStatus status,  String? errorMessage)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( BuildStep step,  BuildStatus status,  BuildOperation operation,  String? errorMessage)?  $default,) {final _that = this;
 switch (_that) {
 case _BuildState() when $default != null:
-return $default(_that.step,_that.status,_that.errorMessage);case _:
+return $default(_that.step,_that.status,_that.operation,_that.errorMessage);case _:
   return null;
 
 }
@@ -223,11 +224,12 @@ return $default(_that.step,_that.status,_that.errorMessage);case _:
 
 
 class _BuildState implements BuildState {
-  const _BuildState({this.step = const BuildStep.preparing(), this.status = BuildStatus.idle, this.errorMessage});
+  const _BuildState({this.step = const BuildStep.preparing(), this.status = BuildStatus.idle, this.operation = BuildOperation.install, this.errorMessage});
   
 
 @override@JsonKey() final  BuildStep step;
 @override@JsonKey() final  BuildStatus status;
+@override@JsonKey() final  BuildOperation operation;
 @override final  String? errorMessage;
 
 /// Create a copy of BuildState
@@ -240,18 +242,18 @@ _$BuildStateCopyWith<_BuildState> get copyWith => __$BuildStateCopyWithImpl<_Bui
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BuildState&&(identical(other.step, step) || other.step == step)&&(identical(other.status, status) || other.status == status)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BuildState&&(identical(other.step, step) || other.step == step)&&(identical(other.status, status) || other.status == status)&&(identical(other.operation, operation) || other.operation == operation)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,step,status,errorMessage);
+    return Object.hash(runtimeType,step,status,operation,errorMessage);
 }
 
 @override
 String toString() {
-    return 'BuildState(step: $step, status: $status, errorMessage: $errorMessage)';
+    return 'BuildState(step: $step, status: $status, operation: $operation, errorMessage: $errorMessage)';
 }
 
 
@@ -262,7 +264,7 @@ abstract mixin class _$BuildStateCopyWith<$Res> implements $BuildStateCopyWith<$
   factory _$BuildStateCopyWith(_BuildState value, $Res Function(_BuildState) _then) = __$BuildStateCopyWithImpl;
 @override @useResult
 $Res call({
- BuildStep step, BuildStatus status, String? errorMessage
+ BuildStep step, BuildStatus status, BuildOperation operation, String? errorMessage
 });
 
 
@@ -279,11 +281,12 @@ class __$BuildStateCopyWithImpl<$Res>
 
 /// Create a copy of BuildState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? step = null,Object? status = null,Object? errorMessage = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? step = null,Object? status = null,Object? operation = null,Object? errorMessage = freezed,}) {
   return _then(_BuildState(
 step: null == step ? _self.step : step // ignore: cast_nullable_to_non_nullable
 as BuildStep,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as BuildStatus,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as BuildStatus,operation: null == operation ? _self.operation : operation // ignore: cast_nullable_to_non_nullable
+as BuildOperation,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

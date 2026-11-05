@@ -30,8 +30,20 @@ void main() {
   void downloadProgress(int receivedBytes, {int? totalBytes = 100}) =>
       step(BuildStep.downloadingSkia(receivedBytes: receivedBytes, totalBytes: totalBytes));
 
+  test("update intent is stored and forwarded to the orchestrator", () async {
+    final run = controller.run(tag: "v2", operation: .update);
+
+    expect(current().operation, BuildOperation.update);
+    expect(orchestrator.operations, [BuildOperation.update]);
+    expect(orchestrator.tags, ["v2"]);
+
+    orchestrator.add(const BuildCompleted());
+    await run;
+    expect(current().operation, BuildOperation.update);
+  });
+
   testWidgets("equal snapshots do not publish; latest value coalesces at 100ms", (tester) async {
-    unawaited(controller.run(tag: "v1"));
+    unawaited(controller.run(tag: "v1", operation: .install));
     downloadProgress(10);
     await tester.pump();
     final count = states.length;
@@ -57,7 +69,7 @@ void main() {
   testWidgets("latest snapshot returning to the published value suppresses an update", (
     tester,
   ) async {
-    unawaited(controller.run(tag: "v1"));
+    unawaited(controller.run(tag: "v1", operation: .install));
     downloadProgress(10);
     await tester.pump();
     final count = states.length;
@@ -71,7 +83,7 @@ void main() {
   });
 
   testWidgets("step transitions are immediate and cancel stale snapshots", (tester) async {
-    unawaited(controller.run(tag: "v1"));
+    unawaited(controller.run(tag: "v1", operation: .install));
     downloadProgress(10);
     downloadProgress(80);
     await tester.pump();
@@ -99,7 +111,7 @@ void main() {
   testWidgets("download and compilation coalesce complete snapshots including raw counts", (
     tester,
   ) async {
-    unawaited(controller.run(tag: "v1"));
+    unawaited(controller.run(tag: "v1", operation: .install));
     step(const BuildStep.downloadingSkia(receivedBytes: 10, totalBytes: 100));
     step(const BuildStep.downloadingSkia(receivedBytes: 20, totalBytes: 200));
     await tester.pump();
@@ -120,7 +132,7 @@ void main() {
   testWidgets("extraction snapshots coalesce and transitions discard pending progress", (
     tester,
   ) async {
-    unawaited(controller.run(tag: "v1"));
+    unawaited(controller.run(tag: "v1", operation: .install));
     step(const BuildStep.extractingSkia(completedFiles: 0, totalFiles: 4));
     await tester.pump();
     expect(current().step, const BuildStep.extractingSkia(completedFiles: 0, totalFiles: 4));
@@ -144,7 +156,7 @@ void main() {
   testWidgets("100 percent does not complete; completion retains the last published step", (
     tester,
   ) async {
-    final run = controller.run(tag: "v1");
+    final run = controller.run(tag: "v1", operation: .install);
     downloadProgress(100);
     await tester.pump();
     expect(current().status, BuildStatus.running);
@@ -162,8 +174,8 @@ void main() {
   testWidgets("failures cancel pending updates; restarting resets the step and error", (
     tester,
   ) async {
-    final run = controller.run(tag: "v1");
-    await controller.run(tag: "ignored");
+    final run = controller.run(tag: "v1", operation: .install);
+    await controller.run(tag: "ignored", operation: .install);
     expect(orchestrator.tags, ["v1"]);
     downloadProgress(100);
     downloadProgress(50);
@@ -175,7 +187,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(current().step.fraction, 1);
 
-    final restart = controller.run(tag: "v2");
+    final restart = controller.run(tag: "v2", operation: .install);
     expect(current(), const BuildState(status: .running));
     expect(current().step, const BuildStep.preparing());
     expect(orchestrator.tags, ["v1", "v2"]);
@@ -186,7 +198,7 @@ void main() {
   });
 
   testWidgets("an unexpected stream end fails without completing", (tester) async {
-    final run = controller.run(tag: "v1");
+    final run = controller.run(tag: "v1", operation: .install);
     unawaited(orchestrator.streams.last.close());
     await tester.pump();
     await tester.runAsync(() => run);
@@ -195,11 +207,11 @@ void main() {
   });
 
   testWidgets("a completed run can restart; indeterminate updates coalesce too", (tester) async {
-    final first = controller.run(tag: "v1");
+    final first = controller.run(tag: "v1", operation: .install);
     orchestrator.add(const BuildCompleted());
     await tester.pump();
     await tester.runAsync(() => first);
-    unawaited(controller.run(tag: "v2"));
+    unawaited(controller.run(tag: "v2", operation: .install));
     expect(current(), const BuildState(status: .running));
     downloadProgress(10);
     downloadProgress(10, totalBytes: null);
@@ -216,7 +228,7 @@ void main() {
   });
 
   testWidgets("disposal cancels scheduled updates and ignores late events", (tester) async {
-    final run = controller.run(tag: "v1");
+    final run = controller.run(tag: "v1", operation: .install);
     downloadProgress(10);
     downloadProgress(90);
     await tester.pump();

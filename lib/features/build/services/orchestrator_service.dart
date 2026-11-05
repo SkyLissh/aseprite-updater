@@ -13,12 +13,17 @@ class OrchestratorService(
   final CompilationService compilation,
   final DeploymentService deployment,
 ) {
-  Stream<BuildEvent> run({required String tag}) async* {
+  Stream<BuildEvent> run({required String tag, required BuildOperation operation}) async* {
     yield const StepChanged(.preparing());
     await paths.ensureDirectoriesExist();
 
     yield const StepChanged(.cloning());
-    await source.clone(tag: tag);
+    switch (operation) {
+      case BuildOperation.install:
+        await source.clone(tag: tag);
+      case BuildOperation.update:
+        await source.update(tag: tag);
+    }
 
     yield const StepChanged(.downloadingSkia(receivedBytes: 0));
     await for (final progress in skia.download()) {

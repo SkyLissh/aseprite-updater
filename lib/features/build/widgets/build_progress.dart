@@ -53,7 +53,7 @@ class BuildProgress extends ConsumerWidget {
 
         await launcher(installation);
       } catch (error, stackTrace) {
-        loggger.e("Failed to launch Aseprite", error: error, stackTrace: stackTrace);
+        logger.e("Failed to launch Aseprite", error: error, stackTrace: stackTrace);
 
         if (!context.mounted) return;
 

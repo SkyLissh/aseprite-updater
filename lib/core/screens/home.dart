@@ -33,8 +33,11 @@ class Home extends HookWidget {
             .release => Consumer(
               builder: (context, ref, _) => ReleaseOverview(
                 onUpdate: (tag) {
+                  final current = ref.read(releasesProvider).requireValue.current;
                   section.value = .build;
-                  ref.read(buildControllerProvider.notifier).run(tag: tag);
+                  ref
+                      .read(buildControllerProvider.notifier)
+                      .run(tag: tag, operation: current == null ? .install : .update);
                 },
               ),
             ),

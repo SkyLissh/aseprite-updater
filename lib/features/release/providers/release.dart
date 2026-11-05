@@ -23,20 +23,20 @@ class Releases extends _$Releases {
     final latest = await service.getLatestRelease();
     final current = await service.installedRelease();
 
-    loggger.i("Latest release: $latest");
-    loggger.i("Current release: $current");
+    logger.i("Latest release: ${latest.tagName}");
+    logger.i("Current release: $current");
 
     return ReleaseState(latest: latest, current: current);
   }
 
   Future<void> searchUpdates() async {
-    final servce = ref.read(releaseServiceProvider);
-    final latest = await servce.getLatestRelease();
+    final service = ref.read(releaseServiceProvider);
+    final latest = await service.getLatestRelease();
 
     if (!ref.mounted) return;
     if (latest.tagName == state.value?.latest.tagName) return;
 
-    loggger.i("Fetched latest relase: $latest");
+    logger.i("Fetched latest release: $latest");
     await update((current) => current.copyWith(latest: latest));
   }
 }
