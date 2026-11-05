@@ -34,6 +34,6 @@ class ReleaseService({required final Directory installation, Dio? client}) {
 
     if (!await release.exists()) return null;
 
-    return await release.readAsString();
+    return (await release.readAsString()).trim();
   }
 }

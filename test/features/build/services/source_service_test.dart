@@ -36,6 +36,28 @@ void main() {
 
   tearDown(() async => temporary.delete(recursive: true));
 
+  test("reads and trims the required Skia tag from the checkout", () async {
+    final file = File.fromUri(checkout.uri.resolve("laf/misc/skia-tag.txt"));
+    await file.parent.create(recursive: true);
+    await file.writeAsString(" m124-08a5439a6b\n");
+
+    expect(await SourceService(checkout).requiredSkia(), "m124-08a5439a6b");
+  });
+
+  test("rejects a missing required Skia tag file", () async {
+    await expectLater(SourceService(checkout).requiredSkia(), throwsStateError);
+  });
+
+  for (final content in ["", " \n\t"]) {
+    test("rejects an empty or whitespace-only required Skia tag: ${content.isEmpty}", () async {
+      final file = File.fromUri(checkout.uri.resolve("laf/misc/skia-tag.txt"));
+      await file.parent.create(recursive: true);
+      await file.writeAsString(content);
+
+      await expectLater(SourceService(checkout).requiredSkia(), throwsStateError);
+    });
+  }
+
   test("update fetches a new tag and switches the existing checkout to it", () async {
     final marker = await File("${checkout.path}/keep.txt").writeAsString("keep");
 

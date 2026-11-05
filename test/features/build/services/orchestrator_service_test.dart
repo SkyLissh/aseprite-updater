@@ -18,6 +18,46 @@ void main() {
   });
   tearDown(() async => temporary.delete(recursive: true));
 
+  for (final cachedTag in <String?>[null, "older-skia", "test-skia"]) {
+    test("cached Skia tag $cachedTag controls downloading and extraction", () async {
+      final paths = PathsService(temporary);
+      final skia = _ControlledSkia(paths.skia, cachedTag: cachedTag);
+      final events = await OrchestratorService(
+        paths,
+        _ControlledSource(paths.checkout, (_) async {}),
+        skia,
+        compilation,
+        deployment,
+      ).run(tag: "v1", operation: .install).toList();
+
+      if (cachedTag == "test-skia") {
+        expect(skia.downloadTags, isEmpty);
+        expect(skia.extractionTags, isEmpty);
+        expect(events.whereType<StepChanged>().map((event) => event.step), [
+          const BuildStep.preparing(),
+          const BuildStep.cloning(),
+          const BuildStep.configuring(),
+          const BuildStep.compiling(completedTasks: 0),
+          const BuildStep.deploying(),
+        ]);
+      } else {
+        expect(skia.downloadTags, ["test-skia"]);
+        expect(skia.extractionTags, ["test-skia"]);
+        expect(
+          events.whereType<StepChanged>().map((event) => event.step),
+          containsAllInOrder([
+            const BuildStep.downloadingSkia(receivedBytes: 0),
+            const BuildStep.extractingSkia(completedFiles: 0),
+            const BuildStep.configuring(),
+          ]),
+        );
+      }
+
+      expect(events.last, isA<BuildCompleted>());
+      expect(deployment.tags, ["v1"]);
+    });
+  }
+
   test("update prepares existing source without cloning", () async {
     final paths = PathsService(temporary);
     final source = _UpdateSource(paths.checkout);
@@ -445,11 +485,17 @@ void main() {
 class _ControlledSource(super.checkout, final Future<void> Function(String) action)
     extends SourceService {
   @override
+  Future<String> requiredSkia() async => "test-skia";
+
+  @override
   Future<void> clone({required String tag}) => action(tag);
 }
 
 class _UpdateSource(super.checkout) extends SourceService {
   final tags = <String>[];
+
+  @override
+  Future<String> requiredSkia() async => "test-skia";
 
   @override
   Future<void> clone({required String tag}) async => throw StateError("Update must not clone");
@@ -462,16 +508,27 @@ class _UpdateSource(super.checkout) extends SourceService {
 
 class _ControlledSkia(
   super.directory, {
+  final String? cachedTag,
   final Stream<DownloadProgress> progress = const Stream.empty(),
   final Stream<ExtractingProgress> extraction = const Stream.empty(),
 }) extends SkiaService {
-  this : super(releaseTag: "test-skia", assetName: "skia.zip");
+  final downloadTags = <String>[];
+  final extractionTags = <String>[];
 
   @override
-  Stream<DownloadProgress> download() => progress;
+  Future<String?> installedTag() async => cachedTag;
 
   @override
-  Stream<ExtractingProgress> extract() => extraction;
+  Stream<DownloadProgress> download({required String releaseTag}) {
+    downloadTags.add(releaseTag);
+    return progress;
+  }
+
+  @override
+  Stream<ExtractingProgress> extract({required String releaseTag}) {
+    extractionTags.add(releaseTag);
+    return extraction;
+  }
 }
 
 class _ControlledCompilation(

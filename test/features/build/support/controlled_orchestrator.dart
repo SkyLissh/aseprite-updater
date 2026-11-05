@@ -16,7 +16,7 @@ class ControlledOrchestrator extends OrchestratorService {
     : super(
         PathsService(Directory.systemTemp),
         SourceService(Directory.systemTemp),
-        SkiaService(Directory.systemTemp, releaseTag: "test-skia", assetName: "skia.zip"),
+        SkiaService(Directory.systemTemp),
         CompilationService(
           checkout: Directory.systemTemp,
           build: Directory.systemTemp,

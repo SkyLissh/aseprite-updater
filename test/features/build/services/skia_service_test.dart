@@ -11,7 +11,12 @@ import "package:aseprite_updater/features/build/services/services.dart";
 
 void main() {
   const releaseTag = "m124-08a5439a6b";
-  const assetName = "Skia-Linux-Release-x64.zip";
+  final assetName = switch (Platform.operatingSystem) {
+    "linux" => "Skia-Linux-Release-x64.zip",
+    "macos" => "Skia-macOS-Release-x64.zip",
+    "windows" => "Skia-Windows-Release-x64.zip",
+    final platform => throw UnsupportedError("Unsupported test platform: $platform"),
+  };
   const assetUrl = "https://example.invalid/skia.zip";
   final bytes = Uint8List.fromList([80, 75, 3, 4, 1, 2]);
   late Directory temporary;
@@ -45,12 +50,7 @@ void main() {
     adapter = _ResponseAdapter();
     client = Dio(BaseOptions(baseUrl: "https://api.github.com/repos/aseprite/skia"))
       ..httpClientAdapter = adapter;
-    service = SkiaService(
-      destination,
-      releaseTag: releaseTag,
-      assetName: assetName,
-      client: client,
-    );
+    service = SkiaService(destination, client: client);
   });
 
   tearDown(() async {
@@ -58,7 +58,18 @@ void main() {
     await temporary.delete(recursive: true);
   });
 
-  test("downloads the configured asset rather than saving release metadata", () async {
+  test("a missing completion marker means no installed Skia tag", () async {
+    expect(await service.installedTag(), isNull);
+  });
+
+  test("reads and trims the completed extraction tag", () async {
+    await destination.create();
+    await File.fromUri(destination.uri.resolve("release")).writeAsString(" $releaseTag\n");
+
+    expect(await service.installedTag(), releaseTag);
+  });
+
+  test("downloads the platform asset rather than saving release metadata", () async {
     adapter.respond = (request) => request.path == assetUrl
         ? ResponseBody.fromBytes(
             bytes,
@@ -69,7 +80,7 @@ void main() {
           )
         : metadata();
 
-    final progress = await service.download().toList();
+    final progress = await service.download(releaseTag: releaseTag).toList();
 
     expect(adapter.requests.map((request) => request.path), [
       "/releases/tags/$releaseTag",
@@ -86,18 +97,18 @@ void main() {
     adapter.respond = (request) =>
         request.path == assetUrl ? ResponseBody.fromBytes(bytes, 200) : metadata();
 
-    final progress = await service.download().toList();
+    final progress = await service.download(releaseTag: releaseTag).toList();
 
     expect(progress, isNotEmpty);
     expect(progress.last.receivedBytes, bytes.length);
     expect(progress.last.totalBytes, isNull);
   });
 
-  test("fails clearly when the configured asset is absent", () async {
+  test("fails clearly when the platform asset is absent", () async {
     adapter.respond = (_) => metadata(includeAsset: false);
 
     await expectLater(
-      service.download().toList(),
+      service.download(releaseTag: releaseTag).toList(),
       throwsA(
         isA<StateError>().having(
           (error) => error.message,
@@ -121,7 +132,7 @@ void main() {
       };
 
       await expectLater(
-        service.download().toList(),
+        service.download(releaseTag: releaseTag).toList(),
         throwsA(isA<DioException>().having((error) => error.response?.statusCode, "status", 404)),
       );
     });
@@ -130,7 +141,10 @@ void main() {
   test("propagates directory creation failures without requesting metadata", () async {
     await File.fromUri(temporary.uri.resolve("skia")).create();
 
-    await expectLater(service.download().toList(), throwsA(isA<FileSystemException>()));
+    await expectLater(
+      service.download(releaseTag: releaseTag).toList(),
+      throwsA(isA<FileSystemException>()),
+    );
     expect(adapter.requests, isEmpty);
   });
 
@@ -141,10 +155,9 @@ void main() {
       requested.complete();
       return response.future;
     };
-    final subscription = service.download().listen(
-      (_) {},
-      onError: (Object error) => fail("$error"),
-    );
+    final subscription = service
+        .download(releaseTag: releaseTag)
+        .listen((_) {}, onError: (Object error) => fail("$error"));
     await requested.future;
 
     await subscription.cancel();
@@ -167,10 +180,9 @@ void main() {
       requested.complete();
       return ResponseBody(body.stream, 200);
     };
-    final subscription = service.download().listen(
-      (_) => received.complete(),
-      onError: (Object error) => fail("$error"),
-    );
+    final subscription = service
+        .download(releaseTag: releaseTag)
+        .listen((_) => received.complete(), onError: (Object error) => fail("$error"));
     await requested.future;
     body.add(bytes);
     await received.future;

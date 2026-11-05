@@ -3,6 +3,22 @@ import "dart:io";
 import "package:path/path.dart" as p;
 
 class SourceService(final Directory checkout) {
+  Future<String> requiredSkia() async {
+    final release = File(p.join(checkout.path, "laf", "misc", "skia-tag.txt"));
+
+    if (!await release.exists()) {
+      throw StateError("Missing required Skia release tag file: ${release.path}");
+    }
+
+    final tag = (await release.readAsString()).trim();
+
+    if (tag.isEmpty) {
+      throw StateError("Required Skia release tag file is empty: ${release.path}");
+    }
+
+    return tag;
+  }
+
   Future<void> update({required String tag}) async {
     if (tag.trim().isEmpty) {
       throw ArgumentError.value(tag, "tag", "A release tag is required");

@@ -29,19 +29,34 @@ void main() {
   setUp(() async {
     temporary = await Directory.systemTemp.createTemp("skia-extraction-");
     destination = await Directory.fromUri(temporary.uri.resolve("skia%20with%20spaces/")).create();
-    service = SkiaService(
-      destination,
-      releaseTag: "test-skia",
-      assetName: "Skia-Linux-Release-x64.zip",
-    );
+    service = SkiaService(destination);
   });
   tearDown(() => temporary.delete(recursive: true));
+
+  test("replacement removes old contents but preserves the ZIP and symlink targets", () async {
+    await writeZip(files());
+    final zip = await extracted("skia.zip").readAsBytes();
+    await extracted("release").writeAsString("old-skia");
+    await extracted("obsolete.txt").writeAsString("old");
+    await Directory(extracted("old-headers").path).create();
+    final outside = await File.fromUri(temporary.uri.resolve("outside.txt")).writeAsString("keep");
+    await Link(extracted("old-link").path).create(outside.path);
+
+    await service.extract(releaseTag: "test-skia").drain<void>();
+
+    expect(await extracted("obsolete.txt").exists(), isFalse);
+    expect(await Directory(extracted("old-headers").path).exists(), isFalse);
+    expect(await Link(extracted("old-link").path).exists(), isFalse);
+    expect(await outside.readAsString(), "keep");
+    expect(await extracted("skia.zip").readAsBytes(), zip);
+    expect(await service.installedTag(), "test-skia");
+  });
 
   test("extracts into the configured directory and reports completed files", () async {
     await writeZip([ArchiveFile.directory("./"), ArchiveFile.directory("empty/"), ...files()]);
     final progress = <(int, int?)>[];
 
-    await for (final update in service.extract()) {
+    await for (final update in service.extract(releaseTag: "test-skia")) {
       progress.add((update.completedFiles, update.totalFiles));
       if (update.completedFiles >= 1) {
         expect(await extracted("include/header.h").readAsString(), "header");
@@ -59,7 +74,10 @@ void main() {
     test("rejects an archive entry outside the destination: $path", () async {
       await writeZip([ArchiveFile.string(path, "escaped"), ...files()]);
 
-      await expectLater(service.extract().toList(), throwsA(isA<ArchiveException>()));
+      await expectLater(
+        service.extract(releaseTag: "test-skia").toList(),
+        throwsA(isA<ArchiveException>()),
+      );
       expect(await File.fromUri(temporary.uri.resolve("escaped.txt")).exists(), isFalse);
     });
   }
@@ -68,7 +86,10 @@ void main() {
     await writeZip([ArchiveFile.string("skia.zip", "replace"), ...files()]);
     final original = await extracted("skia.zip").readAsBytes();
 
-    await expectLater(service.extract().toList(), throwsA(isA<ArchiveException>()));
+    await expectLater(
+      service.extract(releaseTag: "test-skia").toList(),
+      throwsA(isA<ArchiveException>()),
+    );
     expect(await extracted("skia.zip").readAsBytes(), original);
   });
 
@@ -80,29 +101,39 @@ void main() {
         await extracted("skia.zip").writeAsString("not a ZIP");
       }
 
-      await expectLater(service.extract().toList(), throwsA(isA<ArchiveException>()));
+      await expectLater(
+        service.extract(releaseTag: "test-skia").toList(),
+        throwsA(isA<ArchiveException>()),
+      );
     });
   }
 
   test("propagates a missing archive as a filesystem error", () async {
-    await expectLater(service.extract().toList(), throwsA(isA<FileSystemException>()));
+    await expectLater(
+      service.extract(releaseTag: "test-skia").toList(),
+      throwsA(isA<FileSystemException>()),
+    );
   });
 
   test("a filesystem write error does not report the file as completed", () async {
-    await writeZip(files());
-    await Directory(extracted("include/header.h").path).create(recursive: true);
+    await writeZip([ArchiveFile.directory("include/header.h/"), ...files()]);
+    await extracted("release").writeAsString("old-skia");
     final progress = <int>[];
 
     await expectLater(
-      service.extract().forEach((update) => progress.add(update.completedFiles)),
+      service
+          .extract(releaseTag: "test-skia")
+          .forEach((update) => progress.add(update.completedFiles)),
       throwsA(isA<FileSystemException>()),
     );
     expect(progress, [0]);
+    expect(await service.installedTag(), isNull);
   });
 
   test("cancelling extraction stops before the next file", () async {
     await writeZip(files());
-    final iterator = StreamIterator(service.extract());
+    await extracted("release").writeAsString("old-skia");
+    final iterator = StreamIterator(service.extract(releaseTag: "test-skia"));
     expect(await iterator.moveNext(), isTrue);
     expect(await iterator.moveNext(), isTrue);
 
@@ -110,5 +141,6 @@ void main() {
 
     expect(await extracted("include/header.h").exists(), isTrue);
     expect(await extracted("lib/library.a").exists(), isFalse);
+    expect(await service.installedTag(), isNull);
   });
 }

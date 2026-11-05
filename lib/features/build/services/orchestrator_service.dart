@@ -25,18 +25,23 @@ class OrchestratorService(
         await source.update(tag: tag);
     }
 
-    yield const StepChanged(.downloadingSkia(receivedBytes: 0));
-    await for (final progress in skia.download()) {
-      yield StepChanged(
-        .downloadingSkia(receivedBytes: progress.receivedBytes, totalBytes: progress.totalBytes),
-      );
-    }
+    final skiaTag = await source.requiredSkia();
+    final installedSkiaTag = await skia.installedTag();
 
-    yield const StepChanged(.extractingSkia(completedFiles: 0));
-    await for (final progress in skia.extract()) {
-      yield StepChanged(
-        .extractingSkia(completedFiles: progress.completedFiles, totalFiles: progress.totalFiles),
-      );
+    if (skiaTag != installedSkiaTag) {
+      yield const StepChanged(.downloadingSkia(receivedBytes: 0));
+      await for (final progress in skia.download(releaseTag: skiaTag)) {
+        yield StepChanged(
+          .downloadingSkia(receivedBytes: progress.receivedBytes, totalBytes: progress.totalBytes),
+        );
+      }
+
+      yield const StepChanged(.extractingSkia(completedFiles: 0));
+      await for (final progress in skia.extract(releaseTag: skiaTag)) {
+        yield StepChanged(
+          .extractingSkia(completedFiles: progress.completedFiles, totalFiles: progress.totalFiles),
+        );
+      }
     }
 
     yield const StepChanged(.configuring());

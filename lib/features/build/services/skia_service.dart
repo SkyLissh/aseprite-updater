@@ -7,12 +7,9 @@ import "package:path/path.dart" as p;
 import "package:aseprite_updater/features/build/models/models.dart";
 import "package:aseprite_updater/features/release/models/models.dart";
 
-class SkiaService(
-  final Directory directory, {
-  required final String releaseTag,
-  required final String assetName,
-  Dio? client,
-}) {
+class SkiaService(final Directory directory, {Dio? client}) {
+  final assetName = _resolveAssetName();
+
   final _api =
       client ??
       Dio(
@@ -22,7 +19,27 @@ class SkiaService(
         ),
       );
 
-  Stream<DownloadProgress> download() {
+  static String _resolveAssetName() {
+    if (Platform.isLinux) {
+      return "Skia-Linux-Release-x64.zip";
+    } else if (Platform.isMacOS) {
+      return "Skia-macOS-Release-x64.zip";
+    } else if (Platform.isWindows) {
+      return "Skia-Windows-Release-x64.zip";
+    } else {
+      throw UnsupportedError("Unsupported platform: ${Platform.operatingSystem}");
+    }
+  }
+
+  Future<String?> installedTag() async {
+    final release = File(p.join(directory.path, "release"));
+
+    if (!await release.exists()) return null;
+
+    return (await release.readAsString()).trim();
+  }
+
+  Stream<DownloadProgress> download({required String releaseTag}) {
     return Stream<DownloadProgress>.multi((controller) async {
       final cancelToken = CancelToken();
 
@@ -67,7 +84,7 @@ class SkiaService(
     });
   }
 
-  Stream<ExtractingProgress> extract() async* {
+  Stream<ExtractingProgress> extract({required String releaseTag}) async* {
     final zip = File.fromUri(directory.uri.resolve("skia.zip"));
     final inputStream = InputFileStream(zip.path);
 
@@ -76,6 +93,8 @@ class SkiaService(
       if (archive.isEmpty) {
         throw ArchiveException("Skia archive is empty or invalid");
       }
+
+      await _cleanup();
 
       final root = p.normalize(directory.absolute.path);
       final symlinks = <ArchiveFile>[];
@@ -120,6 +139,24 @@ class SkiaService(
       }
     } finally {
       await inputStream.close();
+    }
+
+    final release = File(p.join(directory.path, "release"));
+    await release.writeAsString(releaseTag, flush: true);
+  }
+
+  Future<void> _cleanup() async {
+    final release = File(p.join(directory.path, "release"));
+    if (await release.exists()) {
+      await release.delete();
+    }
+
+    final zipPath = p.join(directory.path, "skia.zip");
+
+    await for (final entry in directory.list(followLinks: false)) {
+      if (p.equals(entry.path, zipPath)) continue;
+
+      await entry.delete(recursive: true);
     }
   }
 

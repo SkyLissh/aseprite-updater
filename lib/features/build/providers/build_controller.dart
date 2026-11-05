@@ -5,7 +5,6 @@ import "package:riverpod_annotation/riverpod_annotation.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "package:aseprite_updater/features/build/models/models.dart";
-import "package:aseprite_updater/features/build/services/services.dart";
 
 import "orchestrator.dart";
 
