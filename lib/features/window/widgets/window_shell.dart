@@ -8,6 +8,7 @@ import "package:aseprite_updater/core/theme/theme.dart";
 import "package:aseprite_updater/features/window/hooks/hooks.dart";
 
 import "window_buttons.dart";
+import "window_drag.dart";
 
 class WindowShell extends HookWidget {
   final Widget child;
@@ -28,8 +29,13 @@ class WindowShell extends HookWidget {
           preferredSize: const Size.fromHeight(kWindowCaptionHeight),
           child: Row(
             children: [
-              const Expanded(
-                child: DragToMoveArea(child: SizedBox(height: kWindowCaptionHeight)),
+              Expanded(
+                child: WindowDrag(
+                  onDrag: () => window.startDrag(),
+                  onMaximize: () => window.toggleMaximize(),
+                  onSecondaryTap: () => window.showPopupMenu(),
+                  child: const SizedBox(height: kWindowCaptionHeight),
+                ),
               ),
               WindowButtons(
                 onMinimize: window.minimize,
