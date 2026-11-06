@@ -13,6 +13,7 @@ class PathsService {
   Directory get build => Directory(p.join(root.path, "build"));
   Directory get out => Directory(p.join(build.path, "out"));
   Directory get installation => Directory(p.join(root.path, "installed"));
+  Directory get stagingInstallation => Directory(p.join(root.path, "installed.next"));
 
   File get desktopEntry => File(p.join(root.parent.path, "applications", "aseprite.desktop"));
   File get icon =>

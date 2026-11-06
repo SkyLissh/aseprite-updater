@@ -3,55 +3,20 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 
-class DeploymentService({
-  required final Directory build,
+class DesktopIntegrationService({
   required final Directory checkout,
   required final Directory installation,
   required final File desktopEntry,
   required final File icon,
   required final Link commandLink,
 }) {
-  Future<void> deploy({required String tag}) async {
+  Future<void> ensure() async {
     if (!Platform.isLinux) {
-      throw UnsupportedError("Aseprite deployment currently supports Linux only");
+      throw UnsupportedError("Desktop integration currently supports Linux only");
     }
 
-    await _install();
     await _publishDesktopEntry();
     await _publishCommand();
-    await _saveRelease(tag);
-  }
-
-  Future<void> _install() async {
-    final buildDirectory = build.absolute.path;
-    final installationDirectory = installation.absolute.path;
-    final installScript = File(p.join(buildDirectory, "cmake_install.cmake"));
-
-    if (!await installScript.exists()) {
-      throw StateError("CMake install script not found: ${installScript.path}");
-    }
-
-    final arguments = ["--install", buildDirectory, "--prefix", installationDirectory];
-    final result = await Process.run("cmake", arguments);
-
-    if (result.exitCode != 0) {
-      throw ProcessException(
-        "cmake",
-        arguments,
-        "Aseprite installation failed.\n${result.stdout}\n${result.stderr}",
-        result.exitCode,
-      );
-    }
-
-    final executable = File(p.join(installationDirectory, "bin", "aseprite"));
-    if (!await executable.exists()) {
-      throw StateError("Installed Aseprite executable not found: ${executable.path}");
-    }
-
-    final data = Directory(p.join(installationDirectory, "share", "aseprite", "data"));
-    if (!await data.exists()) {
-      throw StateError("Installed Aseprite data directory not found: ${data.path}");
-    }
   }
 
   String _escapeDesktopValue(String value) => value
@@ -145,11 +110,5 @@ class DeploymentService({
 
     await destination.parent.create(recursive: true);
     await destination.create(executable.path);
-  }
-
-  Future<void> _saveRelease(String tag) async {
-    final release = File(p.join(installation.path, "release"));
-
-    await release.writeAsString(tag, flush: true);
   }
 }

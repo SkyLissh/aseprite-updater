@@ -17,6 +17,14 @@ void main() {
     expect(await paths.installation.exists(), isFalse);
   });
 
+  test("staging resolves inside the root without being created", () async {
+    final paths = PathsService(temporary);
+
+    expect(paths.stagingInstallation.path, p.join(temporary.path, "installed.next"));
+    await paths.ensureDirectoriesExist();
+    expect(await paths.stagingInstallation.exists(), isFalse);
+  });
+
   test("desktop entry resolves beside the updater root without creating it", () async {
     final paths = PathsService(Directory(p.join(temporary.path, "aseprite-updater")));
 

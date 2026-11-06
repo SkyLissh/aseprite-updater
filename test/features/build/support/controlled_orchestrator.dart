@@ -22,8 +22,12 @@ class ControlledOrchestrator extends OrchestratorService {
           build: Directory.systemTemp,
           skia: Directory.systemTemp,
         ),
-        DeploymentService(
+        InstallationService(
           build: Directory.systemTemp,
+          installation: Directory.systemTemp,
+          stagingInstallation: Directory(p.join(Directory.systemTemp.path, "staging")),
+        ),
+        DesktopIntegrationService(
           checkout: Directory.systemTemp,
           installation: Directory.systemTemp,
           desktopEntry: File(p.join(Directory.systemTemp.path, "aseprite.desktop")),

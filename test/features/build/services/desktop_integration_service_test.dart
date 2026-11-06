@@ -3,171 +3,42 @@ import "dart:io";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
 
-import "package:aseprite_updater/features/build/services/deployment_service.dart";
-import "package:aseprite_updater/features/release/services/services.dart";
+import "package:aseprite_updater/features/build/services/services.dart";
 
 void main() {
-  group("Linux deployment", () {
+  group("Linux desktop integration", () {
     late _DeploymentFixture fixture;
 
     setUp(() async {
       fixture = await _DeploymentFixture.create();
       await fixture.configure();
+      await InstallationService(
+        build: fixture.build,
+        installation: fixture.installation,
+        stagingInstallation: Directory(p.join(fixture.temporary.path, "staging")),
+      ).install(tag: "v1.3.0");
     });
 
     tearDown(() async => fixture.temporary.delete(recursive: true));
 
-    test("installs executable and resources into the private prefix", () async {
-      await fixture.service.deploy(tag: "v1.3.0");
+    test("integration can be retried after resolving a conflicting command", () async {
+      await fixture.commandLink.parent.create(recursive: true);
+      await File(fixture.commandLink.path).writeAsString("foreign command");
 
-      expect(await fixture.executable.exists(), isTrue);
-      expect((await fixture.executable.stat()).mode & 0x49, isNot(0));
-      expect(await fixture.icon.readAsString(), "fixture icon");
-      expect(await fixture.data.exists(), isTrue);
-      expect(await Directory(p.join(fixture.build.path, "bin")).exists(), isFalse);
-    });
+      await expectLater(fixture.service.ensure(), throwsStateError);
+      expect(await fixture.desktopEntry.exists(), isTrue);
+      expect(await fixture.iconDestination.exists(), isTrue);
+      expect(await File(fixture.commandLink.path).readAsString(), "foreign command");
+      await File(fixture.commandLink.path).delete();
 
-    test("persists the selected tag after successful deployment", () async {
-      await fixture.service.deploy(tag: "v1.3.0");
+      await fixture.service.ensure();
 
+      expect(await fixture.commandLink.resolveSymbolicLinks(), fixture.executable.path);
       expect(await File(p.join(fixture.installation.path, "release")).readAsString(), "v1.3.0");
     });
 
-    test("the release service can read the successfully deployed tag", () async {
-      await fixture.service.deploy(tag: "v1.3.0");
-
-      final releases = ReleaseService(installation: fixture.installation);
-      expect(await releases.installedRelease(), "v1.3.0");
-    });
-
-    test("failed deployment preserves the previous installed tag", () async {
-      await fixture.service.deploy(tag: "v1.2.0");
-      await fixture.configure(beforeInstall: 'message(FATAL_ERROR "fixture failure")');
-
-      await expectLater(fixture.service.deploy(tag: "v1.3.0"), throwsA(isA<ProcessException>()));
-
-      expect(await File(p.join(fixture.installation.path, "release")).readAsString(), "v1.2.0");
-    });
-
-    test("accepts relative inputs and publishes absolute paths", () async {
-      final service = DeploymentService(
-        build: Directory(p.relative(fixture.build.path)),
-        checkout: Directory(p.relative(fixture.checkout.path)),
-        installation: Directory(p.relative(fixture.installation.path)),
-        desktopEntry: File(p.relative(fixture.desktopEntry.path)),
-        icon: File(p.relative(fixture.iconDestination.path)),
-        commandLink: Link(p.relative(fixture.commandLink.path)),
-      );
-
-      await service.deploy(tag: "v1.3.0");
-
-      expect(p.isAbsolute(await fixture.commandLink.target()), isTrue);
-      expect(await fixture.commandLink.resolveSymbolicLinks(), fixture.executable.path);
-      final lines = await fixture.desktopEntry.readAsLines();
-      final executable = lines.singleWhere((line) => line.startsWith("TryExec=")).substring(8);
-      expect(p.isAbsolute(executable), isTrue);
-      expect(await File(executable).resolveSymbolicLinks(), fixture.executable.path);
-    });
-
-    test("waits for the CMake installation to finish", () async {
-      final started = File(p.join(fixture.temporary.path, "install started"));
-      final release = File(p.join(fixture.temporary.path, "release install"));
-      await fixture.configure(
-        beforeInstall:
-            """
-file(WRITE [==[${started.path}]==] "started")
-while(NOT EXISTS [==[${release.path}]==])
-  execute_process(COMMAND "\${CMAKE_COMMAND}" -E sleep 0.05)
-endwhile()
-""",
-      );
-      var completed = false;
-      final deployment = fixture.service.deploy(tag: "v1.3.0").whenComplete(() => completed = true);
-      final result = expectLater(deployment, completes);
-
-      try {
-        final watch = Stopwatch()..start();
-        while (!await started.exists() &&
-            !completed &&
-            watch.elapsed < const Duration(seconds: 10)) {
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-        }
-
-        expect(await started.exists(), isTrue, reason: "CMake must reach the installation gate");
-        expect(completed, isFalse);
-        await _expectNoIntegration(fixture);
-      } finally {
-        await release.writeAsString("continue");
-        await result;
-      }
-    });
-
-    test("rejects a missing install script before publishing integration", () async {
-      await File(p.join(fixture.build.path, "cmake_install.cmake")).delete();
-
-      await expectLater(fixture.service.deploy(tag: "v1.3.0"), throwsA(isA<StateError>()));
-
-      expect(await fixture.installation.exists(), isFalse);
-      await _expectNoIntegration(fixture);
-    });
-
-    test("preserves CMake diagnostics, arguments, and failure exit code", () async {
-      await fixture.configure(
-        beforeInstall: 'message(STATUS "fixture stdout")\nmessage(FATAL_ERROR "fixture stderr")',
-      );
-
-      await expectLater(
-        fixture.service.deploy(tag: "v1.3.0"),
-        throwsA(
-          isA<ProcessException>()
-              .having((error) => error.executable, "executable", "cmake")
-              .having((error) => error.arguments, "arguments", [
-                "--install",
-                fixture.build.absolute.path,
-                "--prefix",
-                fixture.installation.absolute.path,
-              ])
-              .having((error) => error.errorCode, "exit code", isPositive)
-              .having((error) => error.message, "stdout", contains("fixture stdout"))
-              .having((error) => error.message, "stderr", contains("fixture stderr")),
-        ),
-      );
-
-      await _expectNoIntegration(fixture);
-    });
-
-    test("leaves partial installation files on CMake failure", () async {
-      final partial = File(p.join(fixture.installation.path, "partial"));
-      await fixture.configure(
-        beforeInstall:
-            """
-file(MAKE_DIRECTORY [==[${fixture.installation.path}]==])
-file(WRITE [==[${partial.path}]==] "partial installation")
-message(FATAL_ERROR "fixture failure")
-""",
-      );
-
-      await expectLater(fixture.service.deploy(tag: "v1.3.0"), throwsA(isA<ProcessException>()));
-
-      expect(await partial.readAsString(), "partial installation");
-      await _expectNoIntegration(fixture);
-    });
-
-    for (final missing in ["executable", "resources"]) {
-      test("rejects an installation missing $missing", () async {
-        await fixture.configure(
-          executable: missing != "executable",
-          resources: missing != "resources",
-        );
-
-        await expectLater(fixture.service.deploy(tag: "v1.3.0"), throwsA(isA<StateError>()));
-
-        await _expectNoIntegration(fixture);
-      });
-    }
-
     test("publishes the upstream desktop metadata with installed paths", () async {
-      await fixture.service.deploy(tag: "v1.3.0");
+      await fixture.service.ensure();
 
       final entry = await fixture.desktopEntry.readAsString();
       expect(entry, isNot(contains("# Managed by aseprite-updater")));
@@ -193,7 +64,7 @@ Exec=preview-command --flag
 Icon=preview-icon
 """, mode: FileMode.append);
 
-      await fixture.service.deploy(tag: "v1.3.0");
+      await fixture.service.ensure();
 
       final entry = await fixture.desktopEntry.readAsString();
       expect(entry, contains("# Upstream comment"));
@@ -206,8 +77,7 @@ Icon=preview-icon
     });
 
     test("rejects an equals sign in the executable path before publishing integration", () async {
-      final service = DeploymentService(
-        build: fixture.build,
+      final service = DesktopIntegrationService(
         checkout: fixture.checkout,
         installation: Directory(p.join(fixture.temporary.path, "installed=aseprite")),
         desktopEntry: fixture.desktopEntry,
@@ -215,14 +85,13 @@ Icon=preview-icon
         commandLink: fixture.commandLink,
       );
 
-      await expectLater(service.deploy(tag: "v1.3.0"), throwsA(isA<StateError>()));
+      await expectLater(service.ensure(), throwsA(isA<StateError>()));
 
       await _expectNoIntegration(fixture);
     });
 
     test("escapes literal percent signs in the Exec executable path", () async {
-      final service = DeploymentService(
-        build: fixture.build,
+      final service = DesktopIntegrationService(
         checkout: fixture.checkout,
         installation: Directory(p.join(fixture.temporary.path, "installed 100%")),
         desktopEntry: fixture.desktopEntry,
@@ -230,7 +99,12 @@ Icon=preview-icon
         commandLink: fixture.commandLink,
       );
 
-      await service.deploy(tag: "v1.3.0");
+      await InstallationService(
+        build: fixture.build,
+        installation: service.installation,
+        stagingInstallation: Directory(p.join(fixture.temporary.path, "custom-staging")),
+      ).install(tag: "v1.3.0");
+      await service.ensure();
 
       final entry = await fixture.desktopEntry.readAsString();
       expect(entry, contains('Exec="${fixture.temporary.path}/installed 100%%/bin/aseprite" %U'));
@@ -240,8 +114,7 @@ Icon=preview-icon
     test("escapes quotes, backticks, and dollar signs in Exec", () async {
       const name = r'installed "`$';
       final installation = Directory(p.join(fixture.temporary.path, name));
-      final service = DeploymentService(
-        build: fixture.build,
+      final service = DesktopIntegrationService(
         checkout: fixture.checkout,
         installation: installation,
         desktopEntry: fixture.desktopEntry,
@@ -249,7 +122,12 @@ Icon=preview-icon
         commandLink: fixture.commandLink,
       );
 
-      await service.deploy(tag: "v1.3.0");
+      await InstallationService(
+        build: fixture.build,
+        installation: service.installation,
+        stagingInstallation: Directory(p.join(fixture.temporary.path, "custom-staging")),
+      ).install(tag: "v1.3.0");
+      await service.ensure();
 
       final entry = await fixture.desktopEntry.readAsString();
       const escaped = r'installed \\"\\`\\$';
@@ -258,8 +136,7 @@ Icon=preview-icon
     });
 
     test("escapes backslashes in Exec when supported by CMake", () async {
-      final service = DeploymentService(
-        build: fixture.build,
+      final service = DesktopIntegrationService(
         checkout: fixture.checkout,
         installation: Directory(p.join(fixture.temporary.path, r"installed \ path")),
         desktopEntry: fixture.desktopEntry,
@@ -268,7 +145,12 @@ Icon=preview-icon
       );
 
       try {
-        await service.deploy(tag: "v1.3.0");
+        await InstallationService(
+          build: fixture.build,
+          installation: service.installation,
+          stagingInstallation: Directory(p.join(fixture.temporary.path, "custom-staging")),
+        ).install(tag: "v1.3.0");
+        await service.ensure();
       } on ProcessException catch (error) {
         if (error.executable != "cmake" || !error.message.contains("file INSTALL destination")) {
           rethrow;
@@ -285,7 +167,7 @@ Icon=preview-icon
     });
 
     test("generated launcher passes desktop-file-validate when available", () async {
-      await fixture.service.deploy(tag: "v1.3.0");
+      await fixture.service.ensure();
 
       final ProcessResult result;
       try {
@@ -303,7 +185,7 @@ Icon=preview-icon
       await fixture.desktopEntry.parent.create(recursive: true);
       await fixture.desktopEntry.writeAsString("old entry\n");
 
-      await fixture.service.deploy(tag: "v1.3.0");
+      await fixture.service.ensure();
 
       expect(await fixture.desktopEntry.readAsString(), contains("Name=Aseprite"));
       expect(await fixture.desktopEntry.readAsString(), isNot(contains("old entry")));
@@ -313,15 +195,15 @@ Icon=preview-icon
       await fixture.iconDestination.parent.create(recursive: true);
       await fixture.iconDestination.writeAsString("old icon");
 
-      await fixture.service.deploy(tag: "v1.3.0");
+      await fixture.service.ensure();
 
       expect(await fixture.iconDestination.readAsBytes(), await fixture.icon.readAsBytes());
     });
 
     test("a missing installed icon prevents launcher and command publication", () async {
-      await File(p.join(fixture.checkout.path, "data", "icons", "ase256.png")).delete();
+      await fixture.icon.delete();
 
-      await expectLater(fixture.service.deploy(tag: "v1.3.0"), throwsA(isA<FileSystemException>()));
+      await expectLater(fixture.service.ensure(), throwsA(isA<FileSystemException>()));
 
       await _expectNoIntegration(fixture);
     });
@@ -329,7 +211,7 @@ Icon=preview-icon
     test("a missing upstream template prevents command publication", () async {
       await fixture.template.delete();
 
-      await expectLater(fixture.service.deploy(tag: "v1.3.0"), throwsA(isA<FileSystemException>()));
+      await expectLater(fixture.service.ensure(), throwsA(isA<FileSystemException>()));
 
       expect(await fixture.executable.exists(), isTrue);
       await _expectNoIntegration(fixture);
@@ -339,7 +221,7 @@ Icon=preview-icon
       test("preserves a foreign desktop $kind and does not publish a command", () async {
         await _createForeignPath(fixture.desktopEntry.path, kind, fixture);
 
-        await expectLater(fixture.service.deploy(tag: "v1.3.0"), throwsA(isA<StateError>()));
+        await expectLater(fixture.service.ensure(), throwsA(isA<StateError>()));
 
         await _expectForeignPath(fixture.desktopEntry.path, kind, fixture);
         expect(
@@ -352,7 +234,7 @@ Icon=preview-icon
       test("preserves an icon destination $kind and does not publish a launcher", () async {
         await _createForeignPath(fixture.iconDestination.path, kind, fixture);
 
-        await expectLater(fixture.service.deploy(tag: "v1.3.0"), throwsA(isA<StateError>()));
+        await expectLater(fixture.service.ensure(), throwsA(isA<StateError>()));
 
         await _expectForeignPath(fixture.iconDestination.path, kind, fixture);
         expect(await fixture.desktopEntry.exists(), isFalse);
@@ -367,14 +249,14 @@ Icon=preview-icon
       test("preserves a foreign command $kind", () async {
         await _createForeignPath(fixture.commandLink.path, kind, fixture);
 
-        await expectLater(fixture.service.deploy(tag: "v1.3.0"), throwsA(isA<StateError>()));
+        await expectLater(fixture.service.ensure(), throwsA(isA<StateError>()));
 
         await _expectForeignPath(fixture.commandLink.path, kind, fixture);
       });
     }
 
     test("creates an absolute terminal symlink that invokes the executable", () async {
-      await fixture.service.deploy(tag: "v1.3.0");
+      await fixture.service.ensure();
 
       expect(await fixture.commandLink.target(), fixture.executable.absolute.path);
       final result = await Process.run(fixture.commandLink.path, const []);
@@ -382,11 +264,11 @@ Icon=preview-icon
       expect(result.stdout, "fixture aseprite\n");
     });
 
-    test("repeat deployment preserves the command link and desktop content", () async {
-      await fixture.service.deploy(tag: "v1.3.0");
+    test("repeated integration preserves the command link and desktop content", () async {
+      await fixture.service.ensure();
       final entry = await fixture.desktopEntry.readAsString();
 
-      await fixture.service.deploy(tag: "v1.3.0");
+      await fixture.service.ensure();
 
       expect(await fixture.desktopEntry.readAsString(), entry);
       expect(await fixture.commandLink.target(), fixture.executable.absolute.path);
@@ -398,7 +280,7 @@ Icon=preview-icon
       final target = p.join(fixture.temporary.path, "missing executable");
       await fixture.commandLink.create(target);
 
-      await expectLater(fixture.service.deploy(tag: "v1.3.0"), throwsA(isA<StateError>()));
+      await expectLater(fixture.service.ensure(), throwsA(isA<StateError>()));
 
       expect(await fixture.commandLink.target(), target);
       expect(await File(target).exists(), isFalse);
@@ -410,7 +292,7 @@ Icon=preview-icon
       await fixture.commandLink.parent.create(recursive: true);
       await fixture.commandLink.create(alias.path);
 
-      await fixture.service.deploy(tag: "v1.3.0");
+      await fixture.service.ensure();
 
       expect(await fixture.commandLink.target(), alias.path);
       expect(await fixture.commandLink.resolveSymbolicLinks(), fixture.executable.path);
@@ -421,7 +303,7 @@ Icon=preview-icon
       final target = p.relative(fixture.executable.path, from: fixture.commandLink.parent.path);
       await fixture.commandLink.create(target);
 
-      await fixture.service.deploy(tag: "v1.3.0");
+      await fixture.service.ensure();
 
       expect(await fixture.commandLink.target(), target);
       expect(await fixture.commandLink.resolveSymbolicLinks(), fixture.executable.path);
@@ -432,7 +314,7 @@ Icon=preview-icon
     final fixture = await _DeploymentFixture.create();
     addTearDown(() => fixture.temporary.delete(recursive: true));
 
-    await expectLater(fixture.service.deploy(tag: "v1.3.0"), throwsUnsupportedError);
+    await expectLater(fixture.service.ensure(), throwsUnsupportedError);
 
     expect(await fixture.installation.exists(), isFalse);
     await _expectNoIntegration(fixture);
@@ -441,7 +323,6 @@ Icon=preview-icon
 
 Future<void> _expectNoIntegration(_DeploymentFixture fixture) async {
   for (final path in [
-    p.join(fixture.installation.path, "release"),
     fixture.desktopEntry.path,
     fixture.iconDestination.path,
     fixture.commandLink.path,
@@ -489,8 +370,7 @@ class _DeploymentFixture(final Directory temporary) {
   File get template => File(p.join(checkout.path, "src", "desktop", "linux", "aseprite.desktop"));
   File get foreign => File(p.join(temporary.path, "foreign executable"));
 
-  DeploymentService get service => DeploymentService(
-    build: build,
+  DesktopIntegrationService get service => DesktopIntegrationService(
     checkout: checkout,
     installation: installation,
     desktopEntry: desktopEntry,

@@ -10,13 +10,71 @@ import "package:aseprite_updater/features/build/services/services.dart";
 void main() {
   late Directory temporary;
   late _ControlledCompilation compilation;
-  late _ControlledDeployment deployment;
+  late _ControlledInstallation installation;
   setUp(() async {
     temporary = await Directory.systemTemp.createTemp("updater-orchestrator-");
     compilation = _ControlledCompilation(PathsService(temporary));
-    deployment = _ControlledDeployment(PathsService(temporary));
+    installation = _ControlledInstallation(PathsService(temporary));
   });
   tearDown(() async => temporary.delete(recursive: true));
+
+  test("integration failure is reported after installation and still completes", () async {
+    final paths = PathsService(temporary);
+    final order = <String>[];
+    final errors = <Object>[];
+    final failure = StateError("integration failed");
+    final events = await OrchestratorService(
+      paths,
+      _ControlledSource(paths.checkout, (_) async {}),
+      _ControlledSkia(paths.skia),
+      compilation,
+      _ControlledInstallation(
+        paths,
+        action: () async {
+          order.add("installation");
+        },
+      ),
+      _ControlledIntegration(
+        paths,
+        action: () async {
+          order.add("integration");
+          throw failure;
+        },
+      ),
+      onIntegrationError: (error, stackTrace) => errors.add(error),
+    ).run(tag: "v1", operation: .install).toList();
+
+    expect(order, ["installation", "integration"]);
+    expect(errors, [failure]);
+    expect(events.last, isA<BuildCompleted>());
+  });
+
+  test("installation failure prevents integration and completion", () async {
+    final paths = PathsService(temporary);
+    var integrated = false;
+    final failure = StateError("installation failed");
+    final events = <BuildEvent>[];
+
+    await expectLater(
+      OrchestratorService(
+        paths,
+        _ControlledSource(paths.checkout, (_) async {}),
+        _ControlledSkia(paths.skia),
+        compilation,
+        _ControlledInstallation(paths, action: () async => throw failure),
+        _ControlledIntegration(
+          paths,
+          action: () async {
+            integrated = true;
+          },
+        ),
+      ).run(tag: "v1", operation: .install).forEach(events.add),
+      throwsA(same(failure)),
+    );
+
+    expect(integrated, isFalse);
+    expect(events.whereType<BuildCompleted>(), isEmpty);
+  });
 
   for (final cachedTag in <String?>[null, "older-skia", "test-skia"]) {
     test("cached Skia tag $cachedTag controls downloading and extraction", () async {
@@ -27,7 +85,8 @@ void main() {
         _ControlledSource(paths.checkout, (_) async {}),
         skia,
         compilation,
-        deployment,
+        installation,
+        _ControlledIntegration(PathsService(temporary)),
       ).run(tag: "v1", operation: .install).toList();
 
       if (cachedTag == "test-skia") {
@@ -54,7 +113,7 @@ void main() {
       }
 
       expect(events.last, isA<BuildCompleted>());
-      expect(deployment.tags, ["v1"]);
+      expect(installation.tags, ["v1"]);
     });
   }
 
@@ -66,12 +125,13 @@ void main() {
       source,
       _ControlledSkia(paths.skia),
       compilation,
-      deployment,
+      installation,
+      _ControlledIntegration(PathsService(temporary)),
     ).run(tag: "v2", operation: .update).toList();
 
     expect(source.tags, ["v2"]);
     expect(events.last, isA<BuildCompleted>());
-    expect(deployment.tags, ["v2"]);
+    expect(installation.tags, ["v2"]);
   });
 
   test("cloning stays indeterminate until the source finishes", () async {
@@ -88,7 +148,8 @@ void main() {
       source,
       _ControlledSkia(paths.skia),
       compilation,
-      deployment,
+      installation,
+      _ControlledIntegration(PathsService(temporary)),
     ).run(tag: "v1", operation: .install).forEach(events.add);
     while (events.length < 2) {
       await Future<void>.delayed(Duration.zero);
@@ -127,7 +188,8 @@ void main() {
         source,
         _ControlledSkia(temporary),
         compilation,
-        deployment,
+        installation,
+        _ControlledIntegration(PathsService(temporary)),
       ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsA(isA<FileSystemException>()),
     );
@@ -143,7 +205,7 @@ void main() {
     await expectLater(SourceService(temporary).clone(tag: "v1"), throwsStateError);
   });
 
-  test("a source failure propagates without deployment or completion", () async {
+  test("a source failure propagates without installation or completion", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
     final source = _ControlledSource(paths.checkout, (_) async {
       throw StateError("clone failed");
@@ -156,7 +218,8 @@ void main() {
         source,
         _ControlledSkia(paths.skia),
         compilation,
-        deployment,
+        installation,
+        _ControlledIntegration(PathsService(temporary)),
       ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsStateError,
     );
@@ -178,7 +241,8 @@ void main() {
       source,
       _ControlledSkia(paths.skia, progress: progress.stream),
       compilation,
-      deployment,
+      installation,
+      _ControlledIntegration(PathsService(temporary)),
     ).run(tag: "v1", operation: .install).forEach(events.add);
     progress.add(const DownloadProgress(receivedBytes: 50, totalBytes: 100));
     while (events.length < 4) {
@@ -197,7 +261,7 @@ void main() {
     expect(events.last, isA<BuildCompleted>());
   });
 
-  test("a Skia failure propagates without deployment or completion", () async {
+  test("a Skia failure propagates without installation or completion", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
     final source = _ControlledSource(paths.checkout, (_) async {});
     final events = <BuildEvent>[];
@@ -208,7 +272,8 @@ void main() {
         source,
         _ControlledSkia(paths.skia, progress: Stream.error(StateError("download failed"))),
         compilation,
-        deployment,
+        installation,
+        _ControlledIntegration(PathsService(temporary)),
       ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsStateError,
     );
@@ -228,7 +293,8 @@ void main() {
       _ControlledSource(paths.checkout, (_) async {}),
       _ControlledSkia(paths.skia, extraction: progress.stream),
       compilation,
-      deployment,
+      installation,
+      _ControlledIntegration(PathsService(temporary)),
     ).run(tag: "v1", operation: .install).forEach(events.add);
     progress.add(const ExtractingProgress(completedFiles: 1, totalFiles: 2));
     while (events.length < 5) {
@@ -248,7 +314,7 @@ void main() {
     expect(events.last, isA<BuildCompleted>());
   });
 
-  test("an extraction failure prevents deployment and completion", () async {
+  test("an extraction failure prevents installation and completion", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
     final events = <BuildEvent>[];
 
@@ -258,7 +324,8 @@ void main() {
         _ControlledSource(paths.checkout, (_) async {}),
         _ControlledSkia(paths.skia, extraction: Stream.error(StateError("extraction failed"))),
         compilation,
-        deployment,
+        installation,
+        _ControlledIntegration(PathsService(temporary)),
       ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsStateError,
     );
@@ -268,7 +335,7 @@ void main() {
     expect(compilation.compileCalls, 0);
   });
 
-  test("configures after extraction and waits before deployment and completion", () async {
+  test("configures after extraction and waits before installation and completion", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
     final extraction = StreamController<ExtractingProgress>();
     addTearDown(extraction.close);
@@ -287,7 +354,8 @@ void main() {
       _ControlledSource(paths.checkout, (_) async {}),
       _ControlledSkia(paths.skia, extraction: extraction.stream),
       compilation,
-      deployment,
+      installation,
+      _ControlledIntegration(PathsService(temporary)),
     ).run(tag: "v1", operation: .install).forEach(events.add);
     extraction.add(const ExtractingProgress(completedFiles: 1, totalFiles: 1));
     while (events.length < 5) {
@@ -322,7 +390,7 @@ void main() {
     expect(events.last, isA<BuildCompleted>());
   });
 
-  test("a configuration failure prevents deployment and completion", () async {
+  test("a configuration failure prevents installation and completion", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
     const error = ProcessException("cmake", [], "configuration failed", 1);
     compilation = _ControlledCompilation(paths, action: () async => throw error);
@@ -334,7 +402,8 @@ void main() {
         _ControlledSource(paths.checkout, (_) async {}),
         _ControlledSkia(paths.skia),
         compilation,
-        deployment,
+        installation,
+        _ControlledIntegration(PathsService(temporary)),
       ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsA(same(error)),
     );
@@ -349,7 +418,7 @@ void main() {
     expect(events.whereType<BuildCompleted>(), isEmpty);
   });
 
-  test("forwards compilation counters and waits before deployment and completion", () async {
+  test("forwards compilation counters and waits before installation and completion", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
     final progress = StreamController<CompilationProgress>();
     addTearDown(progress.close);
@@ -360,7 +429,8 @@ void main() {
       _ControlledSource(paths.checkout, (_) async {}),
       _ControlledSkia(paths.skia),
       compilation,
-      deployment,
+      installation,
+      _ControlledIntegration(PathsService(temporary)),
     ).run(tag: "v1", operation: .install).forEach(events.add);
     progress.add(const CompilationProgress(completedTasks: 3, totalTasks: 4));
     while (events.length < 7) {
@@ -376,17 +446,17 @@ void main() {
     expect(steps.last.fraction, .75);
     expect(steps.whereType<Deploying>(), isEmpty);
     expect(events.whereType<BuildCompleted>(), isEmpty);
-    expect(deployment.calls, 0);
+    expect(installation.calls, 0);
 
     await progress.close();
     await done;
-    expect(deployment.calls, 1);
-    expect(deployment.tags, ["v1"]);
+    expect(installation.calls, 1);
+    expect(installation.tags, ["v1"]);
     expect((events[events.length - 2] as StepChanged).step, const BuildStep.deploying());
     expect(events.last, isA<BuildCompleted>());
   });
 
-  test("a compilation failure prevents deployment and completion", () async {
+  test("a compilation failure prevents installation and completion", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
     const error = ProcessException("ninja", [], "compilation failed", 1);
     compilation = _ControlledCompilation(paths, progress: Stream.error(error));
@@ -398,13 +468,14 @@ void main() {
         _ControlledSource(paths.checkout, (_) async {}),
         _ControlledSkia(paths.skia),
         compilation,
-        deployment,
+        installation,
+        _ControlledIntegration(PathsService(temporary)),
       ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsA(same(error)),
     );
 
     expect(compilation.compileCalls, 1);
-    expect(deployment.calls, 0);
+    expect(installation.calls, 0);
     expect((events.last as StepChanged).step, const BuildStep.compiling(completedTasks: 0));
     expect(
       events.whereType<StepChanged>().map((event) => event.step).whereType<Deploying>(),
@@ -413,7 +484,7 @@ void main() {
     expect(events.whereType<BuildCompleted>(), isEmpty);
   });
 
-  test("deployment starts after compilation and prevents completion while pending", () async {
+  test("installation starts after compilation and prevents completion while pending", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
     final progress = StreamController<CompilationProgress>();
     addTearDown(progress.close);
@@ -423,7 +494,7 @@ void main() {
     addTearDown(() {
       if (!releaseDeployment.isCompleted) releaseDeployment.complete();
     });
-    deployment = _ControlledDeployment(
+    installation = _ControlledInstallation(
       paths,
       action: () {
         started.complete();
@@ -436,18 +507,19 @@ void main() {
       _ControlledSource(paths.checkout, (_) async {}),
       _ControlledSkia(paths.skia),
       compilation,
-      deployment,
+      installation,
+      _ControlledIntegration(PathsService(temporary)),
     ).run(tag: "v1", operation: .install).forEach(events.add);
     while (compilation.compileCalls == 0) {
       await Future<void>.delayed(Duration.zero);
     }
 
-    expect(deployment.calls, 0);
+    expect(installation.calls, 0);
     await progress.close();
     await started.future.timeout(const Duration(seconds: 2));
 
-    expect(deployment.calls, 1);
-    expect(deployment.tags, ["v1"]);
+    expect(installation.calls, 1);
+    expect(installation.tags, ["v1"]);
     expect((events.last as StepChanged).step, const BuildStep.deploying());
     expect((events.last as StepChanged).step.fraction, isNull);
     expect(events.whereType<BuildCompleted>(), isEmpty);
@@ -458,10 +530,10 @@ void main() {
     expect(events.last, isA<BuildCompleted>());
   });
 
-  test("a deployment failure propagates without completion", () async {
+  test("a installation failure propagates without completion", () async {
     final paths = PathsService(Directory("${temporary.path}/workspace"));
-    final error = StateError("deployment failed");
-    deployment = _ControlledDeployment(paths, action: () async => throw error);
+    final error = StateError("installation failed");
+    installation = _ControlledInstallation(paths, action: () async => throw error);
     final events = <BuildEvent>[];
 
     await expectLater(
@@ -470,13 +542,14 @@ void main() {
         _ControlledSource(paths.checkout, (_) async {}),
         _ControlledSkia(paths.skia),
         compilation,
-        deployment,
+        installation,
+        _ControlledIntegration(PathsService(temporary)),
       ).run(tag: "v1", operation: .install).forEach(events.add),
       throwsA(same(error)),
     );
 
-    expect(deployment.calls, 1);
-    expect(deployment.tags, ["v1"]);
+    expect(installation.calls, 1);
+    expect(installation.tags, ["v1"]);
     expect((events.last as StepChanged).step, const BuildStep.deploying());
     expect(events.whereType<BuildCompleted>(), isEmpty);
   });
@@ -554,11 +627,30 @@ class _ControlledCompilation(
   }
 }
 
-class _ControlledDeployment(PathsService paths, {final Future<void> Function()? action})
-    extends DeploymentService {
+class _ControlledInstallation(PathsService paths, {final Future<void> Function()? action})
+    extends InstallationService {
   this
     : super(
         build: paths.build,
+        installation: paths.installation,
+        stagingInstallation: paths.stagingInstallation,
+      );
+
+  var calls = 0;
+  final tags = <String>[];
+
+  @override
+  Future<void> install({required String tag}) {
+    tags.add(tag);
+    calls++;
+    return action?.call() ?? Future<void>.value();
+  }
+}
+
+class _ControlledIntegration(PathsService paths, {final Future<void> Function()? action})
+    extends DesktopIntegrationService {
+  this
+    : super(
         checkout: paths.checkout,
         installation: paths.installation,
         desktopEntry: paths.desktopEntry,
@@ -566,13 +658,6 @@ class _ControlledDeployment(PathsService paths, {final Future<void> Function()? 
         commandLink: paths.commandLink,
       );
 
-  var calls = 0;
-  final tags = <String>[];
-
   @override
-  Future<void> deploy({required String tag}) {
-    tags.add(tag);
-    calls++;
-    return action?.call() ?? Future<void>.value();
-  }
+  Future<void> ensure() => action?.call() ?? Future<void>.value();
 }

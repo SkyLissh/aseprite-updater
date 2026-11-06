@@ -2,7 +2,8 @@ import "package:aseprite_updater/core/services/paths_service.dart";
 import "package:aseprite_updater/features/build/models/models.dart";
 
 import "compilation_service.dart";
-import "deployment_service.dart";
+import "installation_service.dart";
+import "desktop_integration_service.dart";
 import "source_service.dart";
 import "skia_service.dart";
 
@@ -11,8 +12,10 @@ class OrchestratorService(
   final SourceService source,
   final SkiaService skia,
   final CompilationService compilation,
-  final DeploymentService deployment,
-) {
+  final InstallationService installation,
+  final DesktopIntegrationService desktopIntegration, {
+  final void Function(Object, StackTrace)? onIntegrationError,
+}) {
   Stream<BuildEvent> run({required String tag, required BuildOperation operation}) async* {
     yield const StepChanged(.preparing());
     await paths.ensureDirectoriesExist();
@@ -55,7 +58,13 @@ class OrchestratorService(
     }
 
     yield const StepChanged(.deploying());
-    await deployment.deploy(tag: tag);
+    await installation.install(tag: tag);
+
+    try {
+      await desktopIntegration.ensure();
+    } catch (error, stackTrace) {
+      onIntegrationError?.call(error, stackTrace);
+    }
 
     yield const BuildCompleted();
   }
